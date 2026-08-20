@@ -39,8 +39,8 @@ export function Sidebar({
   productUnavailableLabel,
 }: SidebarProps) {
   const destinations: readonly ProductDestination[] = [
-    { available: true, id: 'lyor', label: 'Lyor' },
-    { available: false, id: 'planaria', label: 'Planaria' },
+    { available: true, description: 'Discover, install, play', id: 'lyor', label: 'Lyor' },
+    { available: false, description: 'Create, Manage, Publish', id: 'planaria', label: 'Planaria' },
   ];
   return (
     <aside className={`sidebar ${isOpen ? 'sidebar--open' : 'sidebar--closed'}`}>
@@ -54,6 +54,7 @@ export function Sidebar({
           }
         }}
         unavailableLabel={productUnavailableLabel}
+        visible={isOpen}
       />
       <div
         aria-hidden={!isOpen}

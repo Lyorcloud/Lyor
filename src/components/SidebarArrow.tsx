@@ -1,5 +1,5 @@
 interface SidebarArrowProps {
-  readonly direction?: 'left' | 'right';
+  readonly direction?: 'down' | 'left' | 'right' | 'up';
 }
 
 /** Shared rendering of the arrow glyph already used by the Figma-aligned sidebar. */

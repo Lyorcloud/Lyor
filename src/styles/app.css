@@ -269,11 +269,11 @@ input:focus-visible,
 .product-switcher {
   position: absolute;
   z-index: 4;
-  top: 7px;
-  left: 14px;
-  width: 96px;
-  height: 32px;
-  opacity: 0.96;
+  top: 15px;
+  left: 13px;
+  width: 170px;
+  height: 45px;
+  opacity: 1;
   pointer-events: auto;
   transform: translateX(0);
   transition: opacity 160ms ease-out, transform 220ms ease-in-out, visibility 0s linear;
@@ -281,26 +281,47 @@ input:focus-visible,
 
 .product-switcher__trigger {
   display: flex;
-  width: 96px;
-  height: 32px;
+  width: 118px;
+  height: 45px;
   align-items: center;
-  gap: 5px;
-  padding: 0;
-  border: 1px solid transparent;
+  gap: 3px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 7px;
   background: transparent;
   color: var(--theme-sidebar-chrome-text);
   cursor: pointer;
-  font-size: 24px;
+  font-size: 32px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 1.25px;
+  line-height: 31px;
   text-shadow: 0 2px 3px var(--theme-shadow);
-  transition: opacity 160ms ease-out, border-color 160ms ease-out;
+  transition: background-color 160ms ease-out, opacity 160ms ease-out;
 }
 
 .product-switcher__trigger:hover,
 .product-switcher__trigger[aria-expanded='true'] {
-  border-color: var(--theme-border);
+  background: var(--theme-hover-surface);
   opacity: 1;
+}
+
+.product-switcher__trigger:active {
+  background: var(--theme-pressed-surface);
+}
+
+.product-switcher__arrow {
+  display: grid;
+  width: 14px;
+  height: 32px;
+  flex: 0 0 14px;
+  place-items: center;
+  overflow: visible;
+}
+
+.product-switcher__arrow .sidebar-arrow {
+  font-size: 28px;
+  line-height: 1;
+  text-shadow: 0 2px 3px var(--theme-shadow);
 }
 
 .product-switcher__popover,
@@ -316,10 +337,32 @@ input:focus-visible,
 }
 
 .product-switcher__popover {
-  top: 36px;
+  top: 50px;
   left: 0;
-  width: 154px;
-  gap: 3px;
+  display: flex;
+  width: 170px;
+  height: 100px;
+  flex-direction: column;
+  gap: 0;
+  padding: 4px 14px;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--theme-sidebar-start), var(--theme-sidebar-end));
+  box-shadow: 4px 4px 4px var(--theme-shadow);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  visibility: hidden;
+  backdrop-filter: blur(4px);
+  transition: opacity 160ms ease-out, transform 160ms ease-out, visibility 0s linear 160ms;
+}
+
+.product-switcher__popover[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  visibility: visible;
+  transition: opacity 160ms ease-out, transform 160ms ease-out, visibility 0s linear;
 }
 
 .product-switcher__item,
@@ -334,17 +377,39 @@ input:focus-visible,
 
 .product-switcher__item {
   display: flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  font-weight: 650;
+  width: 140px;
+  height: 45px;
+  min-height: 45px;
+  flex: 0 0 45px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0;
+  font-weight: 700;
 }
 
-.product-switcher__item small { color: var(--theme-muted-text); font-size: 9px; }
+.product-switcher__item-title {
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.85px;
+  line-height: 28px;
+}
+
+.product-switcher__item small {
+  color: var(--theme-secondary-text);
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  line-height: 11px;
+  white-space: nowrap;
+}
+
 .product-switcher__item:hover,
 .sort-popover__option:hover { background: var(--theme-raised-hover); }
-.product-switcher__item[aria-current='page'] { background: var(--theme-selected-surface); }
+
+.product-switcher__item:active { background: var(--theme-pressed-surface); }
 
 .sidebar-arrow {
   display: inline-block;
@@ -352,6 +417,8 @@ input:focus-visible,
 }
 
 .sidebar-arrow--right { transform: rotate(180deg); }
+.sidebar-arrow--down { transform: rotate(-90deg); }
+.sidebar-arrow--up { transform: rotate(90deg); }
 
 .sidebar--closed .product-switcher {
   opacity: 0;
