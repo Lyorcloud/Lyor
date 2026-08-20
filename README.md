@@ -8,7 +8,7 @@ through `0.1.3` are development/prototype builds. The production patch line is
 user-facing installer family name; each generated installer filename also
 contains its exact application version and architecture.
 
-This repository contains the secure Electron foundation, Figma-aligned UI shell, complete local Settings view, and the real Windows application-updater boundary. Mod Install/Uninstall and game discovery remain intentionally mock-only at this stage: no GTA V or RPF files are read or changed.
+This repository contains the secure Electron foundation, Figma-aligned UI shell, complete local Settings view, Supabase email/password authentication boundary, and the real Windows application-updater boundary. Mod Install/Uninstall and game discovery remain intentionally mock-only at this stage: no GTA V or RPF files are read or changed.
 
 The V1.2 milestone and architecture contract is in
 [`docs/LYOR_V1_2_BASELINE.md`](docs/LYOR_V1_2_BASELINE.md). The implemented
@@ -58,6 +58,8 @@ npm run lint
 npm run typecheck
 npm run build
 npm test
+npm run test:supabase
+npm run security:scan
 ```
 
 Create the Windows distributable:
@@ -106,6 +108,31 @@ The first implementation turn covers:
 
 Home, Mods, Library, Search results, and Favorites share the fixed `230 x 300px` ModCard. Library uses typed mock logical membership plus a separate device-local state model, supports the five Milestone 1 states, and keeps cards present after uninstall until the explicit Remove from Library action.
 
+## Authentication security foundation
+
+Milestone 2 adds Register, email verification, Login, Forgot/Reset Password,
+session restore/refresh/expiration, and Logout. Supabase runs in Electron main,
+not the renderer. Windows persists the session only as a `safeStorage`-encrypted
+blob under Electron `userData`; no access/refresh token is exposed through
+preload or stored in renderer `localStorage`.
+
+Set only `LYOR_SUPABASE_URL` and a client-safe
+`LYOR_SUPABASE_PUBLISHABLE_KEY` in the process environment. Never use a
+service-role/secret key in the desktop application. `.env.example` documents
+the shape without credentials.
+
+The local database, Auth service, Mailpit email capture, migrations, seed, and
+pgTAP tests are reproducible through the pinned Supabase CLI. They require a
+running Docker-compatible container runtime:
+
+```powershell
+npm run test:supabase
+```
+
+This resets only the local Supabase database, runs RLS tests, then runs the
+real local Auth API flow tests. It does not link, push, deploy, or modify a
+remote project.
+
 ## Figma
 
 Visual reference: [Lyor in Figma](https://www.figma.com/design/sZtHJ0VLe4VssHIGC49fuA/Lyor?node-id=10-2)
@@ -121,6 +148,6 @@ Reference nodes:
 
 ## Scope guardrails
 
-V1 contains Home, Library, Mods, Search, Favorites, and Settings. V1.2 Milestone 1 narrowly adds local sorting on Home/Library/Favorites and richer mock-only Library/install UI states. It does not contain accounts/profiles, login, backend/Supabase/cloud services, community uploads, ratings/reviews/comments, mod or game detail pages, filters, general product notifications, Premium, real mod updates, user-facing Restore/Rollback features, an admin panel, or a Lyor-built trainer system. The narrowly scoped update-available banner belongs only to the real application updater.
+V1 contains Home, Library, Mods, Search, Favorites, and Settings. V1.2 Milestone 1 narrowly adds local sorting and richer mock-only Library/install UI states. Milestone 2 narrowly adds Supabase authentication and deny-by-default account-data security foundations. It does not add full cloud sync, Planaria content management, R2/object distribution, community uploads, ratings/reviews/comments, mod or game detail pages, filters, general product notifications, Premium, real mod updates, user-facing Restore/Rollback features, an admin panel UI, or a Lyor-built trainer system. The narrowly scoped update-available banner belongs only to the real application updater.
 
 Regular mods and administrator-prepared third-party trainer packages are intended for eventual V1 support. The real game-file engine is not part of the current foundation and must not be added without a new explicit implementation scope.

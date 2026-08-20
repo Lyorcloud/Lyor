@@ -11,6 +11,7 @@ export default tseslint.config(
       'dist-electron/**',
       'release/**',
       'node_modules/**',
+      'supabase/.temp/**',
     ],
   },
   eslint.configs.recommended,
@@ -37,7 +38,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['electron/**/*.ts', 'vite.config.mts'],
+    files: ['electron/**/*.ts', 'vite.config.mts', 'scripts/**/*.mjs'],
     languageOptions: {
       globals: globals.node,
     },

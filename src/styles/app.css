@@ -602,6 +602,40 @@ input:focus-visible,
   transition: filter 200ms ease-out;
 }
 
+.headbar__account {
+  position: absolute;
+  top: 7px;
+  right: 126px;
+  display: flex;
+  max-width: 170px;
+  height: 26px;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  padding: 0 9px;
+  border: 1px solid var(--theme-border);
+  border-radius: 999px;
+  background: var(--theme-button-surface);
+  color: var(--theme-primary-text);
+  cursor: pointer;
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.headbar__account span {
+  color: var(--theme-accent-strong);
+  font-size: 8px;
+}
+
+.headbar__account:hover {
+  border-color: var(--theme-strong-border);
+  background: var(--theme-hover-surface);
+}
+
 .search-bar {
   position: relative;
   display: block;
@@ -1834,6 +1868,147 @@ input:focus-visible,
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+.auth-overlay {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  padding: 24px;
+  place-items: center;
+  background: rgba(8, 13, 27, 0.36);
+  backdrop-filter: blur(8px);
+  animation: update-overlay-backdrop-in 180ms ease-out both;
+}
+
+.auth-dialog {
+  position: relative;
+  width: min(390px, 100%);
+  padding: 25px;
+  border: 1px solid var(--theme-strong-border);
+  border-radius: 15px;
+  outline: none;
+  background: var(--theme-raised-surface);
+  box-shadow: 0 16px 40px var(--theme-shadow);
+  color: var(--theme-primary-text);
+  animation: update-overlay-dialog-in 190ms ease-out both;
+}
+
+.auth-dialog__close {
+  position: absolute;
+  top: 11px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--theme-settings-secondary-text);
+  cursor: pointer;
+  font-size: 21px;
+}
+
+.auth-dialog__close:hover { background: var(--theme-hover-surface); }
+
+.auth-dialog__eyebrow {
+  margin: 0 0 5px;
+  color: var(--theme-settings-secondary-text);
+  font-family: Inter, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+}
+
+.auth-dialog h2 {
+  margin: 0;
+  color: var(--theme-heading-text);
+  font-size: 21px;
+}
+
+.auth-dialog__message,
+.auth-account p,
+.auth-form__feedback {
+  margin: 14px 0 0;
+  color: var(--theme-settings-secondary-text);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--theme-settings-secondary-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.auth-form input {
+  width: 100%;
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  outline: none;
+  background: var(--theme-input-surface);
+  color: var(--theme-input-text);
+  font: inherit;
+}
+
+.auth-form input:focus {
+  border-color: var(--theme-strong-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent-strong) 20%, transparent);
+}
+
+.auth-form button,
+.auth-account button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  background: var(--theme-button-surface);
+  color: var(--theme-primary-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.auth-form__primary { background: var(--theme-selected-surface) !important; }
+.auth-form button:disabled,
+.auth-account button:disabled { cursor: wait; opacity: 0.65; }
+
+.auth-form__links {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.auth-form__links button,
+.auth-form__back {
+  min-height: 30px;
+  padding-inline: 4px;
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--theme-settings-secondary-text) !important;
+}
+
+.auth-form__feedback { margin: 0; }
+
+.auth-account {
+  display: grid;
+  gap: 11px;
+  margin-top: 17px;
+}
+
+.auth-account p { margin: 0; color: var(--theme-primary-text); font-weight: 700; }
+.auth-account span { color: var(--theme-settings-secondary-text); font-size: 12px; }
 
 @container content (max-width: 760px) {
   .settings-page {

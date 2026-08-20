@@ -69,6 +69,18 @@ backend, authentication, cloud sync, real mod updates, storage integration, or
 a physical Installation Engine. The older V1 exclusions remain active outside
 this named UI-only exception.
 
+### V1.2 Milestone 2 narrow supersession
+
+Milestone 2 authorizes Supabase email/password authentication, the private
+main-process session boundary, profiles and server-owned role foundations, and
+version-controlled migrations/seed/security tests for Profiles, Settings,
+Favorites, logical Library membership, and Devices. It does not authorize full
+cloud synchronization, Planaria content management, object storage/R2, a
+service-role capability in the desktop app, or the Installation Engine.
+Supabase sessions stay out of renderer storage and renderer bundles. Database
+authorization is deny-by-default RLS plus explicit grants; user-editable
+metadata is never an authorization source.
+
 V1 is intended to support regular mods and third-party trainer packages prepared by an administrator. This does not authorize a community upload flow or a native Lyor trainer.
 
 The current implementation must not access GTA V or RPF files and must not implement the real mod installation/uninstallation engine. Install and Uninstall UI state must go through an isolated service explicitly named as a mock. Game discovery/path controls also remain explicitly mock-only until a real discovery engine is separately authorized. Do not disguise mock state as filesystem behavior. The application updater is an explicit exception: it is real infrastructure implemented with `electron-updater` in the main process and is not part of the mod engine.

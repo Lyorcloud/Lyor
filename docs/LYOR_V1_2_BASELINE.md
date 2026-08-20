@@ -1,9 +1,32 @@
 # Lyor V1.2 Baseline and Architecture Contract
 
 Status: normative V1.2 milestone memory  
-Current milestone: Milestone 1 — V1.2 Interface
+Current milestone: Milestone 2 — Supabase Authentication + Security Foundation
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
+
+## Milestone 2 authentication and security contract
+
+Milestone 2 activates email/password authentication and the minimum cloud
+security foundation. Supabase runs behind Electron main; preload exposes only
+typed, validated auth actions and sanitized public session summaries. Access
+and refresh tokens never enter renderer state or `localStorage`. On Windows,
+the persisted Supabase session is encrypted with Electron `safeStorage`
+(DPAPI-backed); when OS encryption is unavailable, persistence degrades to
+memory rather than plaintext disk storage.
+
+`supabase/migrations/` is authoritative for profiles, settings, favorites,
+logical Library membership, devices, private roles, explicit grants, and RLS.
+Public signup always provisions `user`, ignoring user-editable metadata. Admin
+and future super-admin assignments are server-owned in `app_private`; the
+desktop publishable client cannot mutate that table. Exact `lyor://auth/callback`
+deep links are accepted for PKCE/verified email flows; arbitrary URLs,
+parameters, navigation, and window creation remain denied.
+
+This milestone does not activate full cloud synchronization, Planaria content
+management, R2/object distribution, privileged service-role desktop access, or
+the Installation Engine. Local UI Library/install state remains distinct from
+the new account-level logical tables until Milestone 3 explicitly defines sync.
 
 ## Milestone 1 interface contract
 
@@ -14,7 +37,7 @@ install phases, and Library presentation states. The typed mock model keeps
 logical Library membership separate from device-local installation truth;
 removing a Library entry cannot itself uninstall or rewrite local state.
 
-This milestone adds no account, Supabase/R2 integration, production backend,
+Milestone 1 itself added no account, Supabase/R2 integration, production backend,
 remote catalog, filesystem access, game-file mutation, manifest adapter, or
 real Installation Engine. Every such Milestone 0 gate remains closed.
 
@@ -70,10 +93,11 @@ account-level state. This layer may know a user’s account preferences,
 favorites, entitlements, and cloud-visible logical records after their owning
 milestones authorize them.
 
-Current comparison: absent and blocked. The current renderer has no account,
-Supabase client, backend connection, or cloud sync. Renderer `localStorage`
-values are device-local prototype state and must not be relabeled as cloud
-truth.
+Current comparison: the Milestone 2 Auth client and user-owned schema/RLS
+foundation are implemented. The client exists only in Electron main; renderer
+has no Supabase import, token, or privileged key. Full Favorites/Library/Settings
+sync remains blocked, so existing renderer `localStorage` values are still
+device-local prototype state and must not be relabeled as cloud truth.
 
 Security contract: RLS is mandatory for exposed user data, authorization must
 be ownership-based, and service-role/secret keys must never enter the renderer.

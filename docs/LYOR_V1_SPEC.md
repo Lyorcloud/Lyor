@@ -90,6 +90,14 @@ Library, and Favorites only. Their documented local typed sort choices and
 Library UI states are authorized; filters, backend-driven sorting, accounts,
 cloud sync, real mod updates, and engine behavior remain excluded.
 
+V1.2 Milestone 2 narrowly supersedes the account/authentication and Supabase
+non-goals above only for email/password authentication and its security
+foundation. It authorizes main-process Supabase Auth, encrypted OS-backed
+session persistence, profiles, private server-authoritative roles, and
+deny-by-default RLS migrations for the named user-owned tables. Full cloud
+sync, remote catalog/content management, object storage, service-role desktop
+access, and physical installation behavior remain excluded.
+
 ## 5. Technology and deliverable
 
 - Current stable Electron

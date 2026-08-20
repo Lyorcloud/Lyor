@@ -13,6 +13,8 @@ interface HeadbarProps {
   readonly searchPlaceholder: string;
   readonly searchValue: string;
   readonly settingsLabel: string;
+  readonly accountLabel: string;
+  readonly onAccount: () => void;
 }
 
 export function Headbar({
@@ -25,6 +27,8 @@ export function Headbar({
   searchPlaceholder,
   searchValue,
   settingsLabel,
+  accountLabel,
+  onAccount,
 }: HeadbarProps) {
   return (
     <div className="headbar">
@@ -52,6 +56,10 @@ export function Headbar({
           variant="headbar"
         />
       </div>
+      <button aria-label={accountLabel} className="headbar__account" data-no-drag onClick={onAccount} type="button">
+        <span aria-hidden="true">●</span>
+        {accountLabel}
+      </button>
     </div>
   );
 }

@@ -10,6 +10,15 @@ import {
 } from 'electron';
 
 import {
+  AUTH_CHANNELS,
+  type AuthInvokeChannel,
+  type ForgotPasswordInput,
+  type LoginInput,
+  type RegisterInput,
+  type UpdatePasswordInput,
+} from '../shared/auth';
+
+import {
   WINDOW_CONTROL_CHANNELS,
   type WindowControlChannel,
 } from '../shared/window-controls';
@@ -18,6 +27,7 @@ import {
   type UpdaterInvokeChannel,
 } from '../shared/updater';
 import { UpdateService } from './update-service';
+import { AuthService, getAuthDeepLinkFromArguments } from './auth-service';
 
 const DEFAULT_DEV_SERVER_URL = 'http://127.0.0.1:5173';
 const ALLOWED_WINDOW_CONTROL_CHANNELS: ReadonlySet<string> = new Set(
@@ -31,9 +41,20 @@ const ALLOWED_UPDATER_INVOKE_CHANNELS: ReadonlySet<string> = new Set([
   UPDATER_CHANNELS.getAutoCheckEnabled,
   UPDATER_CHANNELS.setAutoCheckEnabled,
 ]);
+const ALLOWED_AUTH_INVOKE_CHANNELS: ReadonlySet<string> = new Set([
+  AUTH_CHANNELS.getState,
+  AUTH_CHANNELS.register,
+  AUTH_CHANNELS.login,
+  AUTH_CHANNELS.forgotPassword,
+  AUTH_CHANNELS.updatePassword,
+  AUTH_CHANNELS.refreshSession,
+  AUTH_CHANNELS.logout,
+]);
 
 let mainWindow: BrowserWindow | null = null;
 let updateService: UpdateService | null = null;
+let authService: AuthService | null = null;
+let pendingAuthDeepLink = getAuthDeepLinkFromArguments(process.argv);
 
 const getProductionRendererPath = (): string =>
   join(__dirname, '..', '..', 'dist', 'index.html');
@@ -93,6 +114,52 @@ function assertAllowedUpdaterChannel(
     throw new Error('Rejected updater channel.');
   }
 }
+
+function assertAllowedAuthChannel(
+  channel: string,
+): asserts channel is AuthInvokeChannel {
+  if (!ALLOWED_AUTH_INVOKE_CHANNELS.has(channel)) {
+    throw new Error('Rejected auth channel.');
+  }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const hasExactKeys = (
+  value: Record<string, unknown>,
+  expected: readonly string[],
+): boolean => {
+  const keys = Object.keys(value).sort();
+  return keys.length === expected.length && keys.every((key, index) => key === [...expected].sort()[index]);
+};
+
+const isBoundedString = (value: unknown, maximum: number): value is string =>
+  typeof value === 'string' && value.length <= maximum;
+
+const isRegisterInput = (value: unknown): value is RegisterInput =>
+  isRecord(value) &&
+  hasExactKeys(value, ['email', 'password', 'passwordConfirm']) &&
+  isBoundedString(value.email, 254) &&
+  isBoundedString(value.password, 128) &&
+  isBoundedString(value.passwordConfirm, 128);
+
+const isLoginInput = (value: unknown): value is LoginInput =>
+  isRecord(value) &&
+  hasExactKeys(value, ['email', 'password']) &&
+  isBoundedString(value.email, 254) &&
+  isBoundedString(value.password, 128);
+
+const isForgotPasswordInput = (value: unknown): value is ForgotPasswordInput =>
+  isRecord(value) &&
+  hasExactKeys(value, ['email']) &&
+  isBoundedString(value.email, 254);
+
+const isUpdatePasswordInput = (value: unknown): value is UpdatePasswordInput =>
+  isRecord(value) &&
+  hasExactKeys(value, ['password', 'passwordConfirm']) &&
+  isBoundedString(value.password, 128) &&
+  isBoundedString(value.passwordConfirm, 128);
 
 const assertTrustedIpcSender = (
   event: IpcMainInvokeEvent,
@@ -235,8 +302,51 @@ const registerUpdaterHandlers = (
   });
 };
 
+const registerAuthHandlers = (
+  window: BrowserWindow,
+  trustedRendererUrl: URL,
+  service: AuthService,
+): void => {
+  const registerHandler = (
+    channel: AuthInvokeChannel,
+    expectedArgumentCount: number,
+    action: (...args: readonly unknown[]) => unknown,
+  ): void => {
+    ipcMain.removeHandler(channel);
+    ipcMain.handle(channel, (event, ...args: unknown[]) => {
+      assertAllowedAuthChannel(channel);
+      assertTrustedIpcSender(event, window, trustedRendererUrl);
+      if (args.length !== expectedArgumentCount) {
+        throw new Error('Rejected invalid auth arguments.');
+      }
+      return action(...args);
+    });
+  };
+
+  registerHandler(AUTH_CHANNELS.getState, 0, () => service.getState());
+  registerHandler(AUTH_CHANNELS.register, 1, (input) => {
+    if (!isRegisterInput(input)) throw new TypeError('Rejected registration input.');
+    return service.register(input);
+  });
+  registerHandler(AUTH_CHANNELS.login, 1, (input) => {
+    if (!isLoginInput(input)) throw new TypeError('Rejected login input.');
+    return service.login(input);
+  });
+  registerHandler(AUTH_CHANNELS.forgotPassword, 1, (input) => {
+    if (!isForgotPasswordInput(input)) throw new TypeError('Rejected password reset input.');
+    return service.forgotPassword(input);
+  });
+  registerHandler(AUTH_CHANNELS.updatePassword, 1, (input) => {
+    if (!isUpdatePasswordInput(input)) throw new TypeError('Rejected password update input.');
+    return service.updatePassword(input);
+  });
+  registerHandler(AUTH_CHANNELS.refreshSession, 0, () => service.refreshSession());
+  registerHandler(AUTH_CHANNELS.logout, 0, () => service.logout());
+};
+
 const createMainWindow = async (
   service: UpdateService,
+  authentication: AuthService,
 ): Promise<BrowserWindow> => {
   const devServerUrl = getDevServerUrl();
   const trustedRendererUrl = getTrustedRendererUrl(devServerUrl);
@@ -265,6 +375,7 @@ const createMainWindow = async (
 
   registerWindowControlHandlers(window, trustedRendererUrl);
   registerUpdaterHandlers(window, trustedRendererUrl, service);
+  registerAuthHandlers(window, trustedRendererUrl, authentication);
 
   window.once('ready-to-show', () => {
     window.show();
@@ -312,7 +423,13 @@ if (!hasSingleInstanceLock) {
     });
   });
 
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, commandLine) => {
+    const authDeepLink = getAuthDeepLinkFromArguments(commandLine);
+    if (authDeepLink && authService) {
+      void authService.handleDeepLink(authDeepLink);
+    } else if (authDeepLink) {
+      pendingAuthDeepLink = authDeepLink;
+    }
     if (!mainWindow || mainWindow.isDestroyed()) {
       return;
     }
@@ -327,6 +444,11 @@ if (!hasSingleInstanceLock) {
 
   void app.whenReady().then(async () => {
     configureSessionSecurity();
+    if (process.defaultApp && process.argv[1]) {
+      app.setAsDefaultProtocolClient('lyor', process.execPath, [join(process.cwd(), process.argv[1])]);
+    } else {
+      app.setAsDefaultProtocolClient('lyor');
+    }
     updateService = new UpdateService({
       emitState: (state) => {
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -334,12 +456,25 @@ if (!hasSingleInstanceLock) {
         }
       },
     });
-    mainWindow = await createMainWindow(updateService);
+    authService = new AuthService({
+      emitState: (state) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(AUTH_CHANNELS.stateChanged, state);
+        }
+      },
+    });
+    await authService.restoreSession();
+    if (pendingAuthDeepLink) {
+      const deepLink = pendingAuthDeepLink;
+      pendingAuthDeepLink = null;
+      await authService.handleDeepLink(deepLink);
+    }
+    mainWindow = await createMainWindow(updateService, authService);
     updateService.scheduleAutomaticCheck();
 
     app.on('activate', () => {
-      if (!mainWindow && updateService) {
-        void createMainWindow(updateService).then((window) => {
+      if (!mainWindow && updateService && authService) {
+        void createMainWindow(updateService, authService).then((window) => {
           mainWindow = window;
         });
       }

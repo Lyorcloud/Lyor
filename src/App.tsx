@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { HomeBillboard } from './components/HomeBillboard';
 import { ModGrid } from './components/ModGrid';
@@ -8,10 +8,12 @@ import { SettingsPage } from './components/settings/SettingsPage';
 import { TitleBar } from './components/TitleBar';
 import { UpdateOverlay } from './components/UpdateBanner';
 import { WindowShell } from './components/WindowShell';
+import { AuthPanel } from './components/AuthPanel';
 import { mockMods } from './data/mockMods';
 import { mockHomeBillboards } from './data/mockBillboards';
 import { mockSidebarGames } from './data/mockGames';
 import { useMockInstallPhases, useMockModState } from './hooks/useMockModState';
+import { useAuth } from './hooks/useAuth';
 import { useI18n } from './i18n/I18nContext';
 import { searchMockMods } from './services/mockModService';
 import { sortFavoriteMods, sortHomeMods, sortLibraryMods, type FavoritesSortId, type HomeSortId, type LibrarySortId } from './services/modSortService';
@@ -35,6 +37,9 @@ export default function App() {
   const { t } = useI18n();
   const mockState = useMockModState();
   const installPhases = useMockInstallPhases();
+  const auth = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
+  const closeAuth = useCallback(() => setAuthOpen(false), []);
   const [route, setRoute] = useState<AppRoute>(routeFromHash);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,11 +159,13 @@ export default function App() {
       sidebarOpen={sidebarOpen}
       titleBar={(
         <TitleBar
+          accountLabel={auth.state.user ? t('auth.account') : t('auth.signIn')}
           closeLabel={t('window.close')}
           favoritesLabel={t('nav.favorites')}
           maximizeLabel={t('window.maximize')}
           minimizeLabel={t('window.minimize')}
           onFavorites={() => handleNavigate('favorites')}
+          onAccount={() => setAuthOpen(true)}
           onSearchChange={(event) => {
             setSearchQuery(event.target.value);
             if (event.target.value) navigateTo('search');
@@ -175,6 +182,19 @@ export default function App() {
       )}
     >
       <UpdateOverlay />
+      {authOpen ? (
+        <AuthPanel
+          forgotPassword={auth.forgotPassword}
+          login={auth.login}
+          logout={auth.logout}
+          onClose={closeAuth}
+          open
+          pending={auth.pending}
+          register={auth.register}
+          state={auth.state}
+          updatePassword={auth.updatePassword}
+        />
+      ) : null}
       <section className={`content-section content-section--${route}`}>
         <div className="route-content" key={route}>
           {route === 'home' ? <HomeBillboard fallbackLabel={t('billboard.fallback')} hidden={searchFocused} items={mockHomeBillboards} nextLabel={t('billboard.next')} previousLabel={t('billboard.previous')} /> : null}

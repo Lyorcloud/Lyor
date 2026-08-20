@@ -1,6 +1,19 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 import type {
+  AppRole,
+  AuthErrorCode,
+  AuthResult,
+  AuthState,
+  AuthStatus,
+  ForgotPasswordInput,
+  LoginInput,
+  LyorAuthApi,
+  RegisterInput,
+  UpdatePasswordInput,
+} from '../shared/auth';
+
+import type {
   WindowControlChannel,
   WindowControlsApi,
 } from '../shared/window-controls';
@@ -31,6 +44,36 @@ const PRELOAD_UPDATER_CHANNELS = {
   setAutoCheckEnabled: 'updater:set-auto-check-enabled',
   stateChanged: 'updater:state-changed',
 } as const;
+
+const PRELOAD_AUTH_CHANNELS = {
+  getState: 'auth:get-state',
+  register: 'auth:register',
+  login: 'auth:login',
+  forgotPassword: 'auth:forgot-password',
+  updatePassword: 'auth:update-password',
+  refreshSession: 'auth:refresh-session',
+  logout: 'auth:logout',
+  stateChanged: 'auth:state-changed',
+} as const;
+
+const AUTH_STATUSES: ReadonlySet<string> = new Set<AuthStatus>([
+  'configurationRequired',
+  'anonymous',
+  'authenticated',
+]);
+const APP_ROLES: ReadonlySet<string> = new Set<AppRole>(['user', 'admin', 'super_admin']);
+const AUTH_ERROR_CODES: ReadonlySet<string> = new Set<AuthErrorCode>([
+  'configurationUnavailable',
+  'invalidInput',
+  'invalidCredentials',
+  'emailNotVerified',
+  'emailAlreadyRegistered',
+  'passwordTooWeak',
+  'rateLimited',
+  'sessionExpired',
+  'networkUnavailable',
+  'requestFailed',
+]);
 
 const UPDATE_STATUSES: ReadonlySet<string> = new Set<UpdateStatus>([
   'idle',
@@ -101,6 +144,52 @@ const isUpdateState = (value: unknown): value is UpdateState => {
   );
 };
 
+const isAuthState = (value: unknown): value is AuthState => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  const user = candidate.user;
+  const validUser = user === null || (
+    typeof user === 'object' && user !== null && !Array.isArray(user) &&
+    typeof (user as Record<string, unknown>).id === 'string' &&
+    typeof (user as Record<string, unknown>).email === 'string' &&
+    typeof (user as Record<string, unknown>).emailVerified === 'boolean' &&
+    typeof (user as Record<string, unknown>).role === 'string' &&
+    APP_ROLES.has((user as Record<string, unknown>).role as string)
+  );
+  return typeof candidate.status === 'string' && AUTH_STATUSES.has(candidate.status) &&
+    validUser && isNullableString(candidate.expiresAt) &&
+    typeof candidate.passwordRecoveryPending === 'boolean';
+};
+
+const isAuthResult = (value: unknown): value is AuthResult => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  const error = candidate.error;
+  const validError = error === null || (
+    typeof error === 'object' && error !== null && !Array.isArray(error) &&
+    typeof (error as Record<string, unknown>).code === 'string' &&
+    AUTH_ERROR_CODES.has((error as Record<string, unknown>).code as string) &&
+    typeof (error as Record<string, unknown>).message === 'string'
+  );
+  return isAuthState(candidate.state) && validError &&
+    (candidate.notice === null || candidate.notice === 'verificationSent' ||
+      candidate.notice === 'resetSent' || candidate.notice === 'passwordUpdated');
+};
+
+const invokeAuthState = async (): Promise<AuthState> => {
+  const result: unknown = await ipcRenderer.invoke(PRELOAD_AUTH_CHANNELS.getState);
+  if (!isAuthState(result)) throw new TypeError('Invalid auth state response.');
+  return result;
+};
+
+const invokeAuthResult = async (channel: string, input?: unknown): Promise<AuthResult> => {
+  const result: unknown = input === undefined
+    ? await ipcRenderer.invoke(channel)
+    : await ipcRenderer.invoke(channel, input);
+  if (!isAuthResult(result)) throw new TypeError('Invalid auth response.');
+  return result;
+};
+
 const invokeVoid = async (channel: WindowControlChannel): Promise<void> => {
   await ipcRenderer.invoke(channel);
 };
@@ -164,5 +253,23 @@ const lyorUpdater: Readonly<LyorUpdaterApi> = Object.freeze({
   },
 });
 
+const lyorAuth: Readonly<LyorAuthApi> = Object.freeze({
+  getState: invokeAuthState,
+  register: (input: RegisterInput) => invokeAuthResult(PRELOAD_AUTH_CHANNELS.register, input),
+  login: (input: LoginInput) => invokeAuthResult(PRELOAD_AUTH_CHANNELS.login, input),
+  forgotPassword: (input: ForgotPasswordInput) => invokeAuthResult(PRELOAD_AUTH_CHANNELS.forgotPassword, input),
+  updatePassword: (input: UpdatePasswordInput) => invokeAuthResult(PRELOAD_AUTH_CHANNELS.updatePassword, input),
+  refreshSession: () => invokeAuthResult(PRELOAD_AUTH_CHANNELS.refreshSession),
+  logout: () => invokeAuthResult(PRELOAD_AUTH_CHANNELS.logout),
+  onStateChange: (listener: (state: AuthState) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, value: unknown): void => {
+      if (isAuthState(value)) listener(value);
+    };
+    ipcRenderer.on(PRELOAD_AUTH_CHANNELS.stateChanged, handler);
+    return () => ipcRenderer.removeListener(PRELOAD_AUTH_CHANNELS.stateChanged, handler);
+  },
+});
+
 contextBridge.exposeInMainWorld('windowControls', windowControls);
 contextBridge.exposeInMainWorld('lyorUpdater', lyorUpdater);
+contextBridge.exposeInMainWorld('lyorAuth', lyorAuth);

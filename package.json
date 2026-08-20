@@ -21,6 +21,8 @@
     "build:electron": "tsc -p tsconfig.electron.json",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "test:supabase": "node scripts/test-supabase.mjs",
+    "security:scan": "node scripts/security-scan.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.electron.json && tsc --noEmit -p tsconfig.node.json",
     "start": "electron .",
     "build:prod": "npm run build",
@@ -29,6 +31,7 @@
     "publish:win": "npm run build:prod && electron-builder --config electron-builder.config.cjs --win nsis --x64 --publish always"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.112.3",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9"
   },
@@ -54,6 +57,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "rimraf": "^6.1.3",
+    "supabase": "2.115.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
     "vite": "^8.2.1",
