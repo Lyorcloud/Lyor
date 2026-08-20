@@ -49,6 +49,12 @@ strict same-version/downgrade/integrity updater policy, explicit Later/Retry
 states, and `npm run verify:release` for installer/blockmap/metadata SHA-256
 consistency. The app never auto-installs merely because it exits.
 
+Milestone 10 completed the integrated local audit and produced an unsigned
+`1.2.0` release candidate. It is not a production release: no tag, push,
+GitHub Release, production backend/storage/SMTP deployment, or updater publish
+was performed. See [`docs/LYOR_V1_2_RC_AUDIT.md`](docs/LYOR_V1_2_RC_AUDIT.md)
+for exact test evidence, artifact hashes, and remaining production blockers.
+
 The V1.2 milestone and architecture contract is in
 [`docs/LYOR_V1_2_BASELINE.md`](docs/LYOR_V1_2_BASELINE.md). The implemented
 foundation scope remains in [`docs/LYOR_V1_SPEC.md`](docs/LYOR_V1_SPEC.md), and
@@ -194,6 +200,14 @@ Reference nodes:
 
 ## Scope guardrails
 
-V1 contains Home, Library, Mods, Search, Favorites, and Settings. V1.2 Milestone 1 adds the named interface behavior, Milestone 2 adds authentication/security, Milestone 3 adds account sync, and Milestone 4 adds only the local generic-file engine core. It does not yet add Planaria content management, R2/object distribution, advanced archive/config adapters, production game/RPF support, community uploads, ratings/reviews/comments, mod or game detail pages, filters, general product notifications, Premium, real mod updates, user-facing Restore/Rollback controls, an admin panel UI, or a Lyor-built trainer system. The narrowly scoped update-available banner belongs only to the existing application updater.
+V1 contains Home, Library, Mods, Search, Favorites, and Settings. V1.2
+Milestones 1–9 add the explicitly documented UI, authentication, account sync,
+local engine, transaction, synthetic adapter, Planaria distribution,
+billboard, and updater boundaries. Production Supabase/R2/SMTP deployment and
+production game/RPF support are still absent. The project also does not add
+community uploads, ratings/reviews/comments, mod or game detail pages, general
+product notifications, Premium, user-facing Restore/Rollback controls, or a
+Lyor-built trainer system. The narrowly scoped update-available banner belongs
+only to the application updater.
 
 Regular mods and administrator-prepared third-party trainer packages are intended for eventual V1 support. The real game-file engine is not part of the current foundation and must not be added without a new explicit implementation scope.

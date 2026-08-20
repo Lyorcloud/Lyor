@@ -151,6 +151,18 @@ production gate, trusted Windows signing, clean version/tag state, credentials,
 and real old-build update verification. A local unsigned installer is evidence
 for packaging only, never permission to publish.
 
+### V1.2 Milestone 10 production gate
+
+Milestone 10 is an audit/release gate and authorizes no new product feature.
+The current `1.2.0` output is an unsigned local release candidate. The exact
+evidence and blockers are recorded in `docs/LYOR_V1_2_RC_AUDIT.md`. Do not tag,
+push, publish, deploy migrations/functions, or mutate production storage until
+every recorded production blocker is independently resolved and the full gate
+is rerun. In particular, local Supabase, synthetic adapter, local S3-compatible
+storage, and packaged smoke tests are not substitutes for production
+Supabase/R2/SMTP, an authorized real game/mod test, both clean Windows targets,
+trusted code signing, or a real old-build-to-new-release updater test.
+
 V1 is intended to support regular mods and third-party trainer packages prepared by an administrator. This does not authorize a community upload flow or a native Lyor trainer.
 
 The current implementation must not access GTA V or RPF files. Milestone 4's real generic-file core may operate only on main-approved paths; tests use isolated fixtures and no production game is auto-registered yet. Visible Install and Uninstall UI state continues through the isolated mock service until verified catalog/package inputs are authorized. Game discovery UI also remains explicitly mock-only; do not disguise it as verified detection. The application updater is an explicit exception: it is real infrastructure implemented with `electron-updater` in the main process and is not part of the mod engine.

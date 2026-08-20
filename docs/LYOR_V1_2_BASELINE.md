@@ -1,9 +1,25 @@
 # Lyor V1.2 Baseline and Architecture Contract
 
 Status: normative V1.2 milestone memory  
-Current milestone: Milestone 9 — GitHub Releases / Auto Updater
+Current milestone: Milestone 10 — audited local release candidate; production blocked
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
+
+## Milestone 10 audit and production gate
+
+Milestone 10 adds no product capability. The integrated Milestone 0–9 source,
+local database, security tests, Windows package, updater metadata, and packaged
+application smoke test pass at commit `cd52335`. The reproducible evidence and
+artifact hashes are recorded in `docs/LYOR_V1_2_RC_AUDIT.md`.
+
+Version `1.2.0` is an **unsigned local release candidate**, not a production
+release. No tag, push, GitHub Release, Supabase/Edge migration deployment,
+object-storage mutation, SMTP change, or updater publication was performed.
+Production remains blocked until trusted Authenticode signing, clean Windows 10
+22H2 and Windows 11 x64 verification, production Supabase/R2/SMTP deployment
+and recovery checks, an authorized real game/mod adapter test, and a real
+published `1.2.0 -> 1.2.1` updater test all succeed. Fixture and local-emulator
+results must not be relabelled as production evidence.
 
 ## Milestone 9 release and updater contract
 
@@ -17,8 +33,10 @@ CI runs lint, typecheck, unit/integration tests, security scan, build, and local
 Supabase security tests. The tag workflow has read-only permissions during
 validation and grants `contents: write` only to the protected `production`
 publish job. Production publishing refuses to run without trusted Windows
-signing secrets. The artifact verifier rejects mixed versions or a wrong GitHub
-updater target and writes `release/artifact-sha256.json`.
+signing secrets. The artifact verifier requires the current version's
+installer, blockmap, `latest.yml`, and packaged updater target to agree,
+excludes stale local builds from its manifest, and writes
+`release/artifact-sha256.json`.
 
 Updater remains main-process-only, checks once per packaged session when
 enabled, never auto-downloads, never auto-installs on ordinary app quit, and
@@ -299,14 +317,15 @@ changes, and uninstall truth.
 
 Current comparison: the Milestone 4 generic-file engine, manifest parser,
 verified detection registry, safe path resolver, backup/ownership metadata, and
-install/uninstall core are implemented in Electron main. The existing
+install/uninstall core are implemented in Electron main. Milestone 5 adds the
+durable download/journal/recovery boundary; Milestone 6 adds capability-based
+archive/config APIs exercised only by a synthetic adapter. The existing
 `mockModService` and `mockGameDiscoveryService` remain renderer-only UI
 simulations and are not represented as real detection or installation results.
-Durable download/journal/recovery and advanced adapters remain gated.
 
 Local/physical truth belongs to the device. Cloud records cannot prove that a
 file exists, that a game path is valid, that an install completed, or that a
-backup is recoverable. The future local engine journal and ownership model are
+backup is recoverable. The local engine journal and ownership model are
 authoritative for those facts. Account sync may mirror a safe summary but must
 never overwrite physical truth merely because cloud state differs.
 
