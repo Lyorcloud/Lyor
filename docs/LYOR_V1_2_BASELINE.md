@@ -1,9 +1,37 @@
 # Lyor V1.2 Baseline and Architecture Contract
 
 Status: normative V1.2 milestone memory  
-Current milestone: Milestone 6 — Advanced Game Adapter Architecture
+Current milestone: Milestone 7 — Planaria + Production Backend + Mod Distribution Cloud
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
+
+## Milestone 7 Planaria and distribution contract
+
+Milestone 7 activates Planaria's admin-only route, version-controlled catalog,
+package metadata, entitlement, upload-session, and verified analytics schema,
+plus authenticated Edge Function boundaries. Supabase Auth remains the identity
+source. `app_private.user_roles` and server-only RPC grants decide admin access;
+public signup and `user_metadata` cannot grant it. Normal users cannot enter
+Planaria or mutate Draft/Ready/Published content.
+
+Package bytes never enter Postgres or transit through an Edge Function. The
+provider-neutral `ModStorageProvider` owns multipart create/part/finalize/abort,
+existence, metadata, deletion, and short-lived signed downloads. The production
+adapter contract is S3-compatible (including Cloudflare R2); deterministic
+local tests use `LocalS3CompatibleStorageProvider`. Object keys are generated
+server-side, finalized size/SHA-256/parts are verified, and Published version
+metadata is immutable. Signed downloads require a Published version and current
+entitlement (or server-owned admin).
+
+Lifecycle is Draft -> Ready -> Published -> Disabled with optimistic revision
+checks. Ready requires verified package, valid manifest, and adapter
+compatibility. Analytics is idempotent; `download_completed` contributes to
+Most Downloaded only when the backend verifies it. Verification/reset SMTP,
+service-role, storage-signer, and analytics secrets are backend-only.
+
+The local Supabase/S3-compatible fixture gate is complete. Production Supabase,
+R2, SMTP delivery, and Edge deployment are not configured or claimed verified;
+they remain production blockers.
 
 ## Milestone 6 advanced adapter contract
 
@@ -202,8 +230,11 @@ mod archives and downloadable payloads. A first production provider may later
 be Cloudflare R2, but clients and domain contracts must not depend on a provider
 brand.
 
-Current comparison: absent and blocked. No upload, signed-download, object-key,
-storage credential, CDN, or provider adapter exists.
+Current comparison: provider-neutral contracts, an S3-compatible adapter
+boundary, a deterministic local multipart fixture, server-generated object
+keys, and authenticated upload/signed-download/delete Edge Function sources are
+implemented. No production R2 account, credential, CDN endpoint, or deployed
+function is configured, so external delivery is not verified.
 
 Binary contract: large binaries never belong in Supabase Database. ZIP, 7Z,
 RAR, and multi-gigabyte packages belong in object storage. The database stores

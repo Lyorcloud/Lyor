@@ -31,6 +31,13 @@ Milestone 6 adds manifest v2 and capability-based archive/config adapter APIs.
 Its executable reference adapter uses only Lyor's synthetic test container and
 temporary fixtures; it is deliberately not a production GTA V/RPF adapter.
 
+Milestone 7 adds the admin-only Planaria boundary, catalog/version/package and
+entitlement migrations, authenticated Edge Function sources, immutable
+Draft/Ready/Published lifecycle, verified analytics, and provider-neutral
+multipart object storage. Local Supabase and S3-compatible fixtures are tested;
+production Supabase, R2, custom SMTP, and Edge deployment still require external
+credentials and are not claimed complete.
+
 The V1.2 milestone and architecture contract is in
 [`docs/LYOR_V1_2_BASELINE.md`](docs/LYOR_V1_2_BASELINE.md). The implemented
 foundation scope remains in [`docs/LYOR_V1_SPEC.md`](docs/LYOR_V1_SPEC.md), and

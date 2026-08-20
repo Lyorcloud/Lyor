@@ -16,10 +16,12 @@ interface SidebarProps {
   readonly isOpen: boolean;
   readonly labels: Record<PrimaryRoute, string>;
   readonly onNavigate: (route: PrimaryRoute) => void;
+  readonly onProductSelect: (product: 'lyor' | 'planaria') => void;
   readonly onToggle: () => void;
   readonly primaryNavigationLabel: string;
   readonly productSwitcherLabel: string;
   readonly productUnavailableLabel: string;
+  readonly planariaAvailable: boolean;
 }
 
 const routes: readonly PrimaryRoute[] = ['home', 'library', 'mods'];
@@ -33,24 +35,29 @@ export function Sidebar({
   isOpen,
   labels,
   onNavigate,
+  onProductSelect,
   onToggle,
   primaryNavigationLabel,
   productSwitcherLabel,
   productUnavailableLabel,
+  planariaAvailable,
 }: SidebarProps) {
   const destinations: readonly ProductDestination[] = [
     { available: true, description: 'Discover, install, play', id: 'lyor', label: 'Lyor' },
-    { available: false, description: 'Create, Manage, Publish', id: 'planaria', label: 'Planaria' },
+    { available: planariaAvailable, description: 'Create, Manage, Publish', id: 'planaria', label: 'Planaria' },
   ];
   return (
     <aside className={`sidebar ${isOpen ? 'sidebar--open' : 'sidebar--closed'}`}>
       <ProductSwitcher
-        currentLabel="Lyor"
+        currentLabel={activeRoute === 'planaria' ? 'Planaria' : 'Lyor'}
+        currentProductId={activeRoute === 'planaria' ? 'planaria' : 'lyor'}
         destinations={destinations}
         label={productSwitcherLabel}
         onSelect={(destination) => {
           if (!destination.available) {
             window.dispatchEvent(new CustomEvent('lyor:product-unavailable', { detail: destination.id }));
+          } else {
+            onProductSelect(destination.id);
           }
         }}
         unavailableLabel={productUnavailableLabel}

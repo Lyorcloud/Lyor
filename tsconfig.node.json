@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["vite.config.mts", "eslint.config.mjs"]
+  "include": ["vite.config.mts", "eslint.config.mjs", "server/**/*.ts"]
 }

@@ -10,6 +10,7 @@ export interface ProductDestination {
 }
 
 interface ProductSwitcherProps {
+  readonly currentProductId?: ProductDestination['id'];
   readonly currentLabel: string;
   readonly destinations: readonly ProductDestination[];
   readonly label: string;
@@ -20,6 +21,7 @@ interface ProductSwitcherProps {
 
 export function ProductSwitcher({
   currentLabel,
+  currentProductId = 'lyor',
   destinations,
   label,
   onSelect,
@@ -124,7 +126,7 @@ export function ProductSwitcher({
       >
         {destinations.map((destination) => (
           <button
-            aria-current={destination.id === 'lyor' ? 'page' : undefined}
+            aria-current={destination.id === currentProductId ? 'page' : undefined}
             aria-label={`${destination.label}. ${destination.description}${destination.available ? '' : `. ${unavailableLabel}`}`}
             className="product-switcher__item"
             key={destination.id}

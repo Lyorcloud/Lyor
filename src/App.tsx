@@ -9,6 +9,7 @@ import { TitleBar } from './components/TitleBar';
 import { UpdateOverlay } from './components/UpdateBanner';
 import { WindowShell } from './components/WindowShell';
 import { AuthPanel } from './components/AuthPanel';
+import { PlanariaPage } from './components/PlanariaPage';
 import { mockMods } from './data/mockMods';
 import { mockHomeBillboards } from './data/mockBillboards';
 import { mockSidebarGames } from './data/mockGames';
@@ -19,9 +20,9 @@ import { useI18n } from './i18n/I18nContext';
 import { searchMockMods } from './services/mockModService';
 import { sortFavoriteMods, sortHomeMods, sortLibraryMods, type FavoritesSortId, type HomeSortId, type LibrarySortId } from './services/modSortService';
 
-type AppRoute = PrimaryRoute | 'favorites' | 'search' | 'settings';
+type AppRoute = PrimaryRoute | 'favorites' | 'search' | 'settings' | 'planaria';
 
-const routes = new Set<AppRoute>(['home', 'library', 'mods', 'favorites', 'search', 'settings']);
+const routes = new Set<AppRoute>(['home', 'library', 'mods', 'favorites', 'search', 'settings', 'planaria']);
 
 function routeFromHash(): AppRoute {
   const candidate = window.location.hash.slice(1) as AppRoute;
@@ -87,6 +88,13 @@ export default function App() {
     scroller.scrollTop = scrollPositionsRef.current.get(route) ?? 0;
   }, [route]);
 
+  const planariaAvailable = auth.state.status === 'authenticated' &&
+    (auth.state.user?.role === 'admin' || auth.state.user?.role === 'super_admin');
+
+  useEffect(() => {
+    if (route === 'planaria' && !planariaAvailable) navigateTo('home');
+  }, [planariaAvailable, route]);
+
   const visibleMods = useMemo(() => {
     if (route === 'library') {
       const libraryIds = new Set(mockState.libraryEntries.map((entry) => entry.modId));
@@ -111,7 +119,7 @@ export default function App() {
           ? t('section.favorites')
           : route === 'search'
             ? t('section.searchResults')
-            : t('nav.settings');
+            : route === 'planaria' ? t('planaria.title') : t('nav.settings');
 
   const emptyMessage = route === 'library'
     ? t('empty.library')
@@ -152,10 +160,12 @@ export default function App() {
           isOpen={sidebarOpen}
           labels={{ home: t('nav.home'), library: t('nav.library'), mods: t('nav.mods') }}
           onNavigate={handleNavigate}
+          onProductSelect={(product) => handleNavigate(product === 'planaria' ? 'planaria' : 'home')}
           onToggle={() => setSidebarOpen((current) => !current)}
           primaryNavigationLabel={t('aria.primaryNavigation')}
           productSwitcherLabel={t('product.switcher')}
           productUnavailableLabel={t('product.unavailable')}
+          planariaAvailable={planariaAvailable}
         />
       )}
       sidebarOpen={sidebarOpen}
@@ -209,6 +219,9 @@ export default function App() {
       <section className={`content-section content-section--${route}`}>
         <div className="route-content" key={route}>
           {route === 'home' ? <HomeBillboard fallbackLabel={t('billboard.fallback')} hidden={searchFocused} items={mockHomeBillboards} nextLabel={t('billboard.next')} previousLabel={t('billboard.previous')} /> : null}
+          {route === 'planaria' ? <PlanariaPage /> : null}
+          {route !== 'planaria' ? (
+          <>
           <div className="section-heading">
             <h1>{sectionTitle}</h1>
             <span />
@@ -223,6 +236,8 @@ export default function App() {
               state={mockState}
             />
           ) : <SettingsPage />}
+          </>
+          ) : null}
         </div>
       </section>
     </WindowShell>

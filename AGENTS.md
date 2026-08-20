@@ -124,6 +124,17 @@ support. Every adapter operation must remain inside the Milestone 5
 transaction/recovery and integrity invariants. Planaria and object distribution
 remain blocked.
 
+### V1.2 Milestone 7 narrow supersession
+
+Milestone 7 authorizes Planaria admin access, catalog/version/package metadata,
+entitlements, verified analytics, privileged Edge Function sources, and the
+provider-neutral multipart object-storage boundary recorded in the baseline.
+Admin authorization is server-owned and checked on every privileged action;
+service-role/storage/SMTP secrets stay backend-only. Database stores only
+object metadata, never package binaries. Production Supabase/R2/SMTP deployment
+is not implied by local fixture success. Billboard management remains gated to
+Milestone 8.
+
 V1 is intended to support regular mods and third-party trainer packages prepared by an administrator. This does not authorize a community upload flow or a native Lyor trainer.
 
 The current implementation must not access GTA V or RPF files. Milestone 4's real generic-file core may operate only on main-approved paths; tests use isolated fixtures and no production game is auto-registered yet. Visible Install and Uninstall UI state continues through the isolated mock service until verified catalog/package inputs are authorized. Game discovery UI also remains explicitly mock-only; do not disguise it as verified detection. The application updater is an explicit exception: it is real infrastructure implemented with `electron-updater` in the main process and is not part of the mod engine.

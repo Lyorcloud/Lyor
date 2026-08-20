@@ -2176,6 +2176,73 @@ input:focus-visible,
   .content-section { padding-inline: 18px; }
 }
 
+.planaria-page {
+  display: grid;
+  gap: 18px;
+  color: var(--theme-primary-text);
+}
+
+.planaria-page__header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.planaria-page__header p,
+.planaria-page__header h1 { margin: 0; }
+.planaria-page__header p { color: var(--theme-secondary-text); }
+.planaria-page__admin-badge,
+.planaria-page__valid,
+.planaria-page__invalid {
+  border: 1px solid var(--theme-strong-border);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.planaria-page__notice {
+  margin: 0;
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  background: var(--theme-raised-surface);
+  padding: 12px 14px;
+}
+.planaria-page__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 14px;
+}
+.planaria-page__grid section {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  border: 1px solid var(--theme-border);
+  border-radius: 15px;
+  background: var(--theme-card-surface);
+  padding: 16px;
+}
+.planaria-page__grid h2,
+.planaria-page__grid p,
+.planaria-page__grid ol { margin: 0; }
+.planaria-page__grid label { display: grid; gap: 5px; font-size: 13px; }
+.planaria-page__grid input,
+.planaria-page__grid textarea {
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  background: var(--theme-input-surface);
+  color: var(--theme-primary-text);
+  padding: 9px 10px;
+  font: inherit;
+}
+.planaria-page__grid textarea { min-height: 150px; resize: vertical; }
+.planaria-page__grid button { min-height: 34px; border: 0; border-radius: 9px; }
+.planaria-page__valid { color: #8fffa1; }
+.planaria-page__invalid { color: #ff9c9c; }
+
+@container content (max-width: 720px) {
+  .planaria-page__grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

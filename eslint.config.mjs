@@ -38,9 +38,18 @@ export default tseslint.config(
     },
   },
   {
-    files: ['electron/**/*.ts', 'vite.config.mts', 'scripts/**/*.mjs'],
+    files: ['electron/**/*.ts', 'server/**/*.ts', 'vite.config.mts', 'scripts/**/*.mjs'],
     languageOptions: {
       globals: globals.node,
+    },
+  },
+  {
+    files: ['supabase/functions/**/*.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        Deno: 'readonly',
+      },
     },
   },
 );
