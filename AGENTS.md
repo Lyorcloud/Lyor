@@ -114,6 +114,16 @@ dependency/conflict checks, integrity/tamper gates, and redacted structured
 logs. It does not authorize archive/config adapters, arbitrary commands,
 renderer paths/elevation, Planaria, or production object storage.
 
+### V1.2 Milestone 6 narrow supersession
+
+Milestone 6 authorizes the capability-based adapter/archive contracts,
+manifest v2 advanced operations, deterministic JSON config merge, and only the
+repository-owned synthetic container fixture described in the baseline. It
+does not authorize RPF/proprietary tooling or a claim of production game
+support. Every adapter operation must remain inside the Milestone 5
+transaction/recovery and integrity invariants. Planaria and object distribution
+remain blocked.
+
 V1 is intended to support regular mods and third-party trainer packages prepared by an administrator. This does not authorize a community upload flow or a native Lyor trainer.
 
 The current implementation must not access GTA V or RPF files. Milestone 4's real generic-file core may operate only on main-approved paths; tests use isolated fixtures and no production game is auto-registered yet. Visible Install and Uninstall UI state continues through the isolated mock service until verified catalog/package inputs are authorized. Game discovery UI also remains explicitly mock-only; do not disguise it as verified detection. The application updater is an explicit exception: it is real infrastructure implemented with `electron-updater` in the main process and is not part of the mod engine.

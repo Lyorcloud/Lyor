@@ -1,9 +1,26 @@
 # Lyor V1.2 Baseline and Architecture Contract
 
 Status: normative V1.2 milestone memory  
-Current milestone: Milestone 5 — Engine Safety / Download / Transaction / Recovery
+Current milestone: Milestone 6 — Advanced Game Adapter Architecture
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
+
+## Milestone 6 advanced adapter contract
+
+Milestone 6 adds capability-based game adapter and archive-handler contracts,
+manifest schema v2, `ARCHIVE_ADD`, `ARCHIVE_REPLACE`, `ARCHIVE_DELETE`, and
+format-aware `CONFIG_MERGE`. Adapters declare file/archive/mod-layer/config,
+version detection, and validation capabilities; a manifest cannot invoke a
+capability the selected adapter does not own. Manifest v1 remains valid and is
+not silently reinterpreted as an advanced manifest.
+
+The implemented reference is `synthetic-container-fixture`, a repository-owned
+legal test format for `game-synthetic-fixture`. It proves entry containment,
+case-collision/corruption/resource checks, exact source hashes, atomic container
+replacement, deterministic conflict-rejecting JSON merge, verified backup,
+rollback, and byte-for-byte uninstall. It is not a GTA V, RPF, or other
+proprietary production adapter and must never be described as one. A real
+authorized game/tooling fixture remains a production blocker.
 
 ## Milestone 5 transaction and recovery contract
 
@@ -51,8 +68,7 @@ relationships. Uninstall removes only unchanged Lyor-owned files and restores
 only hash-verified originals. Missing/tampered/unowned paths fail closed. Cloud
 Library membership and device summaries cannot authorize a physical operation.
 
-Milestone 6 archive/config adapters, Planaria, and object distribution remain
-blocked until their named milestones.
+Planaria and object distribution remain blocked until their named milestones.
 
 ## Milestone 3 user cloud and multi-PC contract
 

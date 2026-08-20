@@ -27,6 +27,10 @@ deterministic crash recovery decisions, rollback hooks, and structured redacted
 engine logs. No download writes directly to a game folder, and failed or partial
 transactions cannot become installed state.
 
+Milestone 6 adds manifest v2 and capability-based archive/config adapter APIs.
+Its executable reference adapter uses only Lyor's synthetic test container and
+temporary fixtures; it is deliberately not a production GTA V/RPF adapter.
+
 The V1.2 milestone and architecture contract is in
 [`docs/LYOR_V1_2_BASELINE.md`](docs/LYOR_V1_2_BASELINE.md). The implemented
 foundation scope remains in [`docs/LYOR_V1_SPEC.md`](docs/LYOR_V1_SPEC.md), and
