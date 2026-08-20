@@ -23,6 +23,7 @@ const isSourceId = (value: unknown): value is string =>
   boundedString(value, 120) && /^[a-zA-Z0-9_-]+$/u.test(value);
 const isSha256 = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value);
+const FORBIDDEN_EXECUTABLE_EXTENSION = /\.(?:bat|cmd|com|exe|msi|ps1|scr)$/iu;
 
 const parseSource = (value: unknown): ManifestSource => {
   if (!isRecord(value) || !exactKeys(value, ['id', 'path'], ['sha256', 'size']) ||
@@ -32,6 +33,9 @@ const parseSource = (value: unknown): ManifestSource => {
     throw new InstallationEngineError('invalid-manifest', 'Invalid manifest source.');
   }
   assertRelativeManifestPath(value.path);
+  if (FORBIDDEN_EXECUTABLE_EXTENSION.test(value.path)) {
+    throw new InstallationEngineError('invalid-manifest', 'Executable and script payloads are forbidden.');
+  }
   return { id: value.id, path: value.path, ...(value.sha256 === undefined ? {} : { sha256: value.sha256 }),
     ...(value.size === undefined ? {} : { size: Number(value.size) }) };
 };
@@ -47,6 +51,9 @@ const parseOperation = (value: unknown): ManifestOperation => {
     throw new InstallationEngineError('invalid-manifest', 'Operation source does not match its operation type.');
   }
   assertRelativeManifestPath(value.target);
+  if (FORBIDDEN_EXECUTABLE_EXTENSION.test(value.target)) {
+    throw new InstallationEngineError('invalid-manifest', 'Executable and script targets are forbidden.');
+  }
   return { type: value.type as ManifestOperation['type'], target: value.target,
     ...(value.source === undefined ? {} : { source: value.source }) };
 };

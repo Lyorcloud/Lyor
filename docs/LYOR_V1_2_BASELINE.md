@@ -1,9 +1,32 @@
 # Lyor V1.2 Baseline and Architecture Contract
 
 Status: normative V1.2 milestone memory  
-Current milestone: Milestone 4 — Installation Engine Core
+Current milestone: Milestone 5 — Engine Safety / Download / Transaction / Recovery
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
+
+## Milestone 5 transaction and recovery contract
+
+Milestone 5 adds a cache-only HTTP(S) download manager with bounded retry,
+partial Range resume, safe restart when a server ignores Range, exact size, and
+SHA-256 verification before staging. Signed URLs are inputs to the privileged
+download boundary only and never enter journals or logs. Downloads never write
+directly into an approved game root.
+
+The durable local journal uses `pending`, `downloading`, `validating`, `staging`,
+`backing_up`, `installing`, `verifying`, `rolling_back`, `installed`, and
+`failed`. Pre-mutation interruption resumes from trusted cached input;
+post-mutation interruption deterministically enters rollback. A partial or
+failed transaction is never reported installed. Preflight owns auth/entitlement
+and Published contracts, compatibility, running-process, disk/writability,
+required dependency, dependency-cycle, and conflict gates. Known target
+collisions fail closed; unknown merges are prohibited.
+
+Engine logs are structured and path/token/signed-URL redacted. Executable or
+script payloads and targets (`BAT`, `CMD`, `COM`, `EXE`, `MSI`, `PS1`, `SCR`)
+are rejected by manifest validation. Full-app elevation and generic elevated
+renderer capabilities are prohibited. Milestone 6 archive/config capabilities
+remain blocked.
 
 ## Milestone 4 local installation engine contract
 
@@ -28,9 +51,8 @@ relationships. Uninstall removes only unchanged Lyor-owned files and restores
 only hash-verified originals. Missing/tampered/unowned paths fail closed. Cloud
 Library membership and device summaries cannot authorize a physical operation.
 
-Milestone 5 durable downloads, journals, crash recovery, dependency execution,
-and full transaction phases; Milestone 6 archive/config adapters; Planaria; and
-object distribution remain blocked until their named milestones.
+Milestone 6 archive/config adapters, Planaria, and object distribution remain
+blocked until their named milestones.
 
 ## Milestone 3 user cloud and multi-PC contract
 

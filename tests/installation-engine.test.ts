@@ -91,6 +91,11 @@ describe('InstallationEngineService fixture boundary', () => {
       .rejects.toMatchObject({ code: 'unsafe-path' });
     const removed = await fixture.service.uninstall({ gameDetectionId: fixture.detectionId, modId: 'not-owned' });
     expect(removed).toMatchObject({ ok: false, error: { code: 'not-installed' } });
+
+    const executable = { ...fixture.manifest, sources: [{ id: 'bad', path: 'files/setup.exe' }],
+      operations: [{ type: 'COPY_FILE', source: 'bad', target: 'mods/setup.exe' }] };
+    await expect(fixture.service.registerApprovedPackage({ packageInputId: 'executable', packageRoot: fixture.packageRoot, manifest: executable }))
+      .rejects.toMatchObject({ code: 'invalid-manifest' });
   });
 
   it('blocks symlink/reparse escapes and tampered destructive uninstall', async () => {

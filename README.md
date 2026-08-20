@@ -21,6 +21,12 @@ ownership metadata, verified backups, and safe uninstall. Renderer calls carry
 only main-approved IDs; arbitrary paths and filesystem capabilities never cross
 preload. The end-to-end engine tests use temporary synthetic fixtures only.
 
+Milestone 5 adds cache-only resumable downloads, exact SHA-256/size validation,
+preflight dependency/conflict/resource gates, a durable transaction journal,
+deterministic crash recovery decisions, rollback hooks, and structured redacted
+engine logs. No download writes directly to a game folder, and failed or partial
+transactions cannot become installed state.
+
 The V1.2 milestone and architecture contract is in
 [`docs/LYOR_V1_2_BASELINE.md`](docs/LYOR_V1_2_BASELINE.md). The implemented
 foundation scope remains in [`docs/LYOR_V1_SPEC.md`](docs/LYOR_V1_SPEC.md), and
