@@ -57,6 +57,7 @@ Run each quality gate independently:
 npm run lint
 npm run typecheck
 npm run build
+npm test
 ```
 
 Create the Windows distributable:
@@ -103,13 +104,13 @@ The first implementation turn covers:
 - a packaged-build-only `electron-updater` service behind validated main/preload IPC, with user-approved downloads and installs;
 - local project copies of used visual assets.
 
-Home, Mods, Library, Search results, and Favorites share the fixed `230 x 300px` ModCard. Library shows only mods marked installed through Lyor's mock service and changes the card action to `Uninstall`.
+Home, Mods, Library, Search results, and Favorites share the fixed `230 x 300px` ModCard. Library uses typed mock logical membership plus a separate device-local state model, supports the five Milestone 1 states, and keeps cards present after uninstall until the explicit Remove from Library action.
 
 ## Figma
 
 Visual reference: [Lyor in Figma](https://www.figma.com/design/sZtHJ0VLe4VssHIGC49fuA/Lyor?node-id=10-2)
 
-Figma defines the intended appearance, not the implementation architecture. The application uses responsive CSS Grid and correct independent scroll regions rather than copying absolute card coordinates, prototype navigation, or broken canvas layout. The visible Figma `Sort` control is intentionally excluded from V1, and the `Libary` typo is corrected to `Library`.
+Figma defines the intended appearance, not the implementation architecture. The application uses responsive CSS Grid and correct independent scroll regions rather than copying absolute card coordinates, prototype navigation, or broken canvas layout. V1.2 Milestone 1 uses the Figma-aligned Sort control on Home, Library, and Favorites with typed local data; the `Libary` typo remains corrected to `Library`.
 
 Reference nodes:
 
@@ -120,6 +121,6 @@ Reference nodes:
 
 ## Scope guardrails
 
-V1 contains Home, Library, Mods, Search, Favorites, and Settings. It does not contain accounts/profiles, login, backend/Supabase/cloud services, community uploads, ratings/reviews/comments, mod or game detail pages, filters, sorting, general product notifications, Premium, mod updates, user-facing Restore/Rollback features, an admin panel, or a Lyor-built trainer system. The narrowly scoped update-available banner belongs only to the real application updater.
+V1 contains Home, Library, Mods, Search, Favorites, and Settings. V1.2 Milestone 1 narrowly adds local sorting on Home/Library/Favorites and richer mock-only Library/install UI states. It does not contain accounts/profiles, login, backend/Supabase/cloud services, community uploads, ratings/reviews/comments, mod or game detail pages, filters, general product notifications, Premium, real mod updates, user-facing Restore/Rollback features, an admin panel, or a Lyor-built trainer system. The narrowly scoped update-available banner belongs only to the real application updater.
 
 Regular mods and administrator-prepared third-party trainer packages are intended for eventual V1 support. The real game-file engine is not part of the current foundation and must not be added without a new explicit implementation scope.

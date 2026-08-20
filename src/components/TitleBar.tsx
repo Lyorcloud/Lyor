@@ -58,13 +58,6 @@ export function TitleBar({
       <Headbar {...headbarProps} />
       <div aria-label={windowControlsLabel} className="window-controls" data-no-drag role="group">
         <button
-          aria-label={closeLabel}
-          className="window-control window-control--close"
-          onClick={() => void getWindowControls()?.close()}
-          title={closeLabel}
-          type="button"
-        />
-        <button
           aria-label={minimizeLabel}
           className="window-control window-control--minimize"
           onClick={() => void getWindowControls()?.minimize()}
@@ -76,6 +69,13 @@ export function TitleBar({
           className="window-control window-control--maximize"
           onClick={() => void toggleMaximized()}
           title={isMaximized ? restoreLabel : maximizeLabel}
+          type="button"
+        />
+        <button
+          aria-label={closeLabel}
+          className="window-control window-control--close"
+          onClick={() => void getWindowControls()?.close()}
+          title={closeLabel}
           type="button"
         />
       </div>

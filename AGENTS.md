@@ -59,6 +59,16 @@ V1 explicitly excludes:
 - user-facing features named Restore or Rollback;
 - a Lyor-built trainer system.
 
+### V1.2 Milestone 1 narrow supersession
+
+Milestone 1 explicitly authorizes only the renderer/UI additions recorded in
+`docs/LYOR_V1_2_BASELINE.md`: Home/Library/Favorites sorting, billboard media
+carousel, product switcher placeholder, richer mock install progress, and the
+typed cloud-library-versus-local-device card states. These do not authorize a
+backend, authentication, cloud sync, real mod updates, storage integration, or
+a physical Installation Engine. The older V1 exclusions remain active outside
+this named UI-only exception.
+
 V1 is intended to support regular mods and third-party trainer packages prepared by an administrator. This does not authorize a community upload flow or a native Lyor trainer.
 
 The current implementation must not access GTA V or RPF files and must not implement the real mod installation/uninstallation engine. Install and Uninstall UI state must go through an isolated service explicitly named as a mock. Game discovery/path controls also remain explicitly mock-only until a real discovery engine is separately authorized. Do not disguise mock state as filesystem behavior. The application updater is an explicit exception: it is real infrastructure implemented with `electron-updater` in the main process and is not part of the mod engine.
@@ -111,7 +121,7 @@ Inspect the Figma file directly when visual detail is needed. Do not ask the use
 - ModCard surface: `rgba(48, 48, 48, 0.30)`.
 - Fonts: Instrument Sans and Inter.
 - Correct Figma's `Libary` typo to `Library` in code.
-- Omit the Sort control visible in Figma because Sort is outside V1.
+- V1.2 Milestone 1 restores the Sort control only on Home, Library, and Favorites with the documented typed local options.
 
 Figma's absolute coordinates, Auto Layout setup, CardGrid, scrolling setup, and prototype/navigation links are not authoritative. Preserve the appearance while implementing robust application structure:
 

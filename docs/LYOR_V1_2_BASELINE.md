@@ -1,9 +1,22 @@
 # Lyor V1.2 Baseline and Architecture Contract
 
 Status: normative V1.2 milestone memory  
-Current milestone: Milestone 0 — Baseline / Repository Safety  
+Current milestone: Milestone 1 — V1.2 Interface
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
+
+## Milestone 1 interface contract
+
+Milestone 1 is a renderer-only scope extension. It authorizes the three themes,
+product switcher with an unavailable Planaria placeholder, search/billboard
+transition, local image/video carousel, shared local sorting, richer mock
+install phases, and Library presentation states. The typed mock model keeps
+logical Library membership separate from device-local installation truth;
+removing a Library entry cannot itself uninstall or rewrite local state.
+
+This milestone adds no account, Supabase/R2 integration, production backend,
+remote catalog, filesystem access, game-file mutation, manifest adapter, or
+real Installation Engine. Every such Milestone 0 gate remains closed.
 
 ## 1. Version and milestone policy
 

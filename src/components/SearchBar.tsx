@@ -2,12 +2,13 @@ import type { ChangeEventHandler, FocusEventHandler } from 'react';
 
 interface SearchBarProps {
   readonly onChange: ChangeEventHandler<HTMLInputElement>;
+  readonly onBlur?: FocusEventHandler<HTMLInputElement>;
   readonly onFocus?: FocusEventHandler<HTMLInputElement>;
   readonly placeholder: string;
   readonly value: string;
 }
 
-export function SearchBar({ onChange, onFocus, placeholder, value }: SearchBarProps) {
+export function SearchBar({ onBlur, onChange, onFocus, placeholder, value }: SearchBarProps) {
   return (
     <label className={`search-bar ${value ? 'search-bar--expanded' : ''}`} data-no-drag>
       <span aria-hidden="true" className="search-bar__icon">
@@ -17,6 +18,7 @@ export function SearchBar({ onChange, onFocus, placeholder, value }: SearchBarPr
       <input
         aria-label={placeholder}
         onChange={onChange}
+        onBlur={onBlur}
         onFocus={onFocus}
         placeholder={placeholder}
         spellCheck={false}

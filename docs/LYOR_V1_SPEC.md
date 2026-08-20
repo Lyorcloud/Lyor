@@ -85,6 +85,11 @@ The requirement that uninstall eventually returns the game to its original state
 
 Do not infer new features from familiar mod managers, the Figma canvas, placeholder content, or unused visual controls. In particular, the Sort control visible in Figma is not part of V1 and must be omitted.
 
+V1.2 Milestone 1 narrowly supersedes the final sentence above for Home,
+Library, and Favorites only. Their documented local typed sort choices and
+Library UI states are authorized; filters, backend-driven sorting, accounts,
+cloud sync, real mod updates, and engine behavior remain excluded.
+
 ## 5. Technology and deliverable
 
 - Current stable Electron
@@ -155,7 +160,7 @@ Figma is authoritative for visual appearance only. Its prototype links, navigati
 
 All image and icon assets actually used by the app must be stored locally in the repository. Temporary Figma/CDN/remote image links must not ship in the app.
 
-Correct the Figma typo `Libary` to `Library` in the product. Do not implement the Sort control visible in Figma.
+Correct the Figma typo `Libary` to `Library` in the product. V1.2 Milestone 1 implements Sort only in its explicitly authorized routes.
 
 ## 8. Visual facts
 

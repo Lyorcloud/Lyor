@@ -1,6 +1,8 @@
 import type { Game } from '../types/domain';
 
 import { GameButton } from './GameButton';
+import { ProductSwitcher, type ProductDestination } from './ProductSwitcher';
+import { SidebarArrow } from './SidebarArrow';
 import { SidebarNavButton } from './SidebarNavButton';
 
 export type PrimaryRoute = 'home' | 'library' | 'mods';
@@ -16,6 +18,8 @@ interface SidebarProps {
   readonly onNavigate: (route: PrimaryRoute) => void;
   readonly onToggle: () => void;
   readonly primaryNavigationLabel: string;
+  readonly productSwitcherLabel: string;
+  readonly productUnavailableLabel: string;
 }
 
 const routes: readonly PrimaryRoute[] = ['home', 'library', 'mods'];
@@ -31,14 +35,25 @@ export function Sidebar({
   onNavigate,
   onToggle,
   primaryNavigationLabel,
+  productSwitcherLabel,
+  productUnavailableLabel,
 }: SidebarProps) {
+  const destinations: readonly ProductDestination[] = [
+    { available: true, id: 'lyor', label: 'Lyor' },
+    { available: false, id: 'planaria', label: 'Planaria' },
+  ];
   return (
     <aside className={`sidebar ${isOpen ? 'sidebar--open' : 'sidebar--closed'}`}>
-      <img
-        alt=""
-        aria-hidden="true"
-        className="sidebar__brand"
-        src="./assets/lyor/sidebar-logo.png"
+      <ProductSwitcher
+        currentLabel="Lyor"
+        destinations={destinations}
+        label={productSwitcherLabel}
+        onSelect={(destination) => {
+          if (!destination.available) {
+            window.dispatchEvent(new CustomEvent('lyor:product-unavailable', { detail: destination.id }));
+          }
+        }}
+        unavailableLabel={productUnavailableLabel}
       />
       <div
         aria-hidden={!isOpen}
@@ -74,7 +89,7 @@ export function Sidebar({
         title={isOpen ? collapseLabel : expandLabel}
         type="button"
       >
-        <span aria-hidden="true" className="sidebar__toggle-icon">❮</span>
+        <span className="sidebar__toggle-icon"><SidebarArrow /></span>
       </button>
     </aside>
   );

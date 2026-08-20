@@ -1,10 +1,12 @@
 import { useSyncExternalStore } from 'react';
 
 import {
+  getMockInstallPhases,
   getMockModState,
+  subscribeToMockInstallPhases,
   subscribeToMockModState,
 } from '../services/mockModService';
-import type { MockModState } from '../types/domain';
+import type { MockInstallPhase, MockModState, ModId } from '../types/domain';
 
 /** React binding for the renderer-only persisted mock install/favorite state. */
 export function useMockModState(): MockModState {
@@ -13,4 +15,8 @@ export function useMockModState(): MockModState {
     getMockModState,
     getMockModState,
   );
+}
+
+export function useMockInstallPhases(): ReadonlyMap<ModId, MockInstallPhase> {
+  return useSyncExternalStore(subscribeToMockInstallPhases, getMockInstallPhases, getMockInstallPhases);
 }

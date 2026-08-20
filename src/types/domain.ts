@@ -54,17 +54,38 @@ export interface Mod {
   readonly kind: ModKind;
   /** Preformatted mock metadata shown by the Figma card. */
   readonly downloads: string;
+  readonly downloadCount: number;
   readonly fileSize: string;
+  readonly fileSizeBytes: number;
+  readonly publishedAt: string;
+  readonly recommendedRank: number;
   readonly description: string;
   /** Local renderer URL. Never points at Figma's temporary asset host. */
   readonly imageSrc: `./assets/figma/${string}`;
 }
 
 export type MockInstallStatus = 'available' | 'installed';
+export type MockInstallPhase = 'idle' | 'downloading' | 'installing' | 'success' | 'failure';
+export type LibraryCardState =
+  | 'installed'
+  | 'not-installed'
+  | 'update-available'
+  | 'needs-attention'
+  | 'compatibility-unknown';
+
+/** Logical library membership is deliberately distinct from physical device truth. */
+export interface MockCloudLibraryEntry {
+  readonly modId: ModId;
+  readonly addedAt: string;
+  readonly installedAt?: string;
+}
 
 export interface MockModState {
   readonly installedModIds: readonly ModId[];
   readonly favoriteModIds: readonly ModId[];
+  readonly favoriteAddedAt: Readonly<Partial<Record<ModId, string>>>;
+  readonly libraryEntries: readonly MockCloudLibraryEntry[];
+  readonly localInstallationState: Readonly<Partial<Record<ModId, LibraryCardState>>>;
 }
 
 export type MockModOperation = 'install' | 'uninstall';

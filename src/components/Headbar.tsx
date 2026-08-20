@@ -6,6 +6,7 @@ import { SearchBar } from './SearchBar';
 interface HeadbarProps {
   readonly favoritesLabel: string;
   readonly onFavorites: () => void;
+  readonly onSearchBlur: FocusEventHandler<HTMLInputElement>;
   readonly onSearchChange: ChangeEventHandler<HTMLInputElement>;
   readonly onSearchFocus: FocusEventHandler<HTMLInputElement>;
   readonly onSettings: () => void;
@@ -17,6 +18,7 @@ interface HeadbarProps {
 export function Headbar({
   favoritesLabel,
   onFavorites,
+  onSearchBlur,
   onSearchChange,
   onSearchFocus,
   onSettings,
@@ -37,6 +39,7 @@ export function Headbar({
           <img alt="" aria-hidden="true" src="./assets/figma/head-icon-04.svg" />
         </button>
         <SearchBar
+          onBlur={onSearchBlur}
           onChange={onSearchChange}
           onFocus={onSearchFocus}
           placeholder={searchPlaceholder}
