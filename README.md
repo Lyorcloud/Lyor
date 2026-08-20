@@ -38,6 +38,12 @@ multipart object storage. Local Supabase and S3-compatible fixtures are tested;
 production Supabase, R2, custom SMTP, and Edge deployment still require external
 credentials and are not claimed complete.
 
+Milestone 8 adds admin-only Manage Billboard UI, server media validation,
+concurrent-safe ordering, Draft/Published/Disabled visibility, safe deletion,
+and Home/preview carousel parity. Local preview mode is functional and clearly
+labelled; production billboard storage still requires the Milestone 7 external
+backend deployment.
+
 The V1.2 milestone and architecture contract is in
 [`docs/LYOR_V1_2_BASELINE.md`](docs/LYOR_V1_2_BASELINE.md). The implemented
 foundation scope remains in [`docs/LYOR_V1_SPEC.md`](docs/LYOR_V1_SPEC.md), and

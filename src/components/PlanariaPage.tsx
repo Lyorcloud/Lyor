@@ -1,8 +1,15 @@
 import { useMemo, useState } from 'react';
 
 import { useI18n } from '../i18n/I18nContext';
+import type { HomeBillboardItem } from '../data/mockBillboards';
+import { ManageBillboards } from './ManageBillboards';
 
-export function PlanariaPage() {
+interface PlanariaPageProps {
+  readonly billboards: readonly HomeBillboardItem[];
+  readonly onBillboardsChange: (items: readonly HomeBillboardItem[]) => void;
+}
+
+export function PlanariaPage({ billboards, onBillboardsChange }: PlanariaPageProps) {
   const { t } = useI18n();
   const [manifestText, setManifestText] = useState('{\n  "schemaVersion": 2\n}');
   const validation = useMemo(() => {
@@ -58,6 +65,7 @@ export function PlanariaPage() {
           <small>{t('planaria.deployRequired')}</small>
         </section>
       </div>
+      <ManageBillboards items={billboards} onChange={onBillboardsChange} />
     </div>
   );
 }

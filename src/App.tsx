@@ -50,6 +50,7 @@ export default function App() {
   const [homeSort, setHomeSort] = useState<HomeSortId>('recommended');
   const [librarySort, setLibrarySort] = useState<LibrarySortId>('recently-installed');
   const [favoritesSort, setFavoritesSort] = useState<FavoritesSortId>('recently-added');
+  const [billboards, setBillboards] = useState(mockHomeBillboards);
   const contentScrollRef = useRef<HTMLElement>(null);
   const routeRef = useRef<AppRoute>(route);
   const scrollPositionsRef = useRef<Map<AppRoute, number>>(new Map());
@@ -218,8 +219,8 @@ export default function App() {
       ) : null}
       <section className={`content-section content-section--${route}`}>
         <div className="route-content" key={route}>
-          {route === 'home' ? <HomeBillboard fallbackLabel={t('billboard.fallback')} hidden={searchFocused} items={mockHomeBillboards} nextLabel={t('billboard.next')} previousLabel={t('billboard.previous')} /> : null}
-          {route === 'planaria' ? <PlanariaPage /> : null}
+          {route === 'home' ? <HomeBillboard fallbackLabel={t('billboard.fallback')} hidden={searchFocused} items={billboards} nextLabel={t('billboard.next')} previousLabel={t('billboard.previous')} /> : null}
+          {route === 'planaria' ? <PlanariaPage billboards={billboards} onBillboardsChange={setBillboards} /> : null}
           {route !== 'planaria' ? (
           <>
           <div className="section-heading">

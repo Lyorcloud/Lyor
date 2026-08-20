@@ -1,9 +1,31 @@
 # Lyor V1.2 Baseline and Architecture Contract
 
 Status: normative V1.2 milestone memory  
-Current milestone: Milestone 7 — Planaria + Production Backend + Mod Distribution Cloud
+Current milestone: Milestone 8 — Planaria Billboard Management
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
+
+## Milestone 8 billboard management contract
+
+Milestone 8 adds admin-only Manage Billboard list/upload-preview/reorder/publish/
+disable/delete behavior and version-controlled billboard schema/functions.
+Metadata records image/video type, provider object reference, size/SHA-256,
+dimensions, verified video duration, `display_order`, lifecycle, revision, and
+timestamps. Public/Home RLS returns only Published rows; Draft and Disabled are
+invisible and ordering is deterministic.
+
+Server media validation recognizes PNG/JPEG/WebP/MP4 magic structure, enforces
+MIME/type, size, dimensions, and MP4 duration limits, and rejects malformed
+content. Ordering uses an advisory transaction lock plus expected revision.
+Published media identity is immutable; safe delete requires matching ID/object
+ownership and only accepts Draft/Disabled state. Preview reuses the exact Home
+carousel component, ratio, object-fit, image timer, video-ended behavior, and
+broken-media fallback.
+
+Without deployed storage/backend credentials the dashboard explicitly runs in
+local preview mode and updates the current session's typed Home feed only. This
+does not claim production upload/publish/delete. The local Supabase and media
+fixture gates are complete; external deployment remains blocked.
 
 ## Milestone 7 Planaria and distribution contract
 
