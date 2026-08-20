@@ -17,6 +17,7 @@ import {
 } from './index';
 
 import { I18nContext, type I18nContextValue } from './I18nContext';
+import { queueCloudSettings } from '../services/cloudSettingsClient';
 
 const LOCALE_STORAGE_KEY = 'lyor.locale.v1';
 
@@ -56,10 +57,14 @@ export function I18nProvider({ children }: PropsWithChildren): ReactElement {
     (key: TranslationKey, values?: TranslationValues) => translate(locale, key, values),
     [locale],
   );
+  const selectLocale = useCallback((nextLocale: Locale) => {
+    setLocale(nextLocale);
+    queueCloudSettings({ locale: nextLocale });
+  }, []);
 
   const value = useMemo<I18nContextValue>(
-    () => ({ locale, setLocale, t }),
-    [locale, t],
+    () => ({ locale, setLocale: selectLocale, t }),
+    [locale, selectLocale, t],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

@@ -14,6 +14,7 @@ import { mockHomeBillboards } from './data/mockBillboards';
 import { mockSidebarGames } from './data/mockGames';
 import { useMockInstallPhases, useMockModState } from './hooks/useMockModState';
 import { useAuth } from './hooks/useAuth';
+import { useCloudSync } from './hooks/useCloudSync';
 import { useI18n } from './i18n/I18nContext';
 import { searchMockMods } from './services/mockModService';
 import { sortFavoriteMods, sortHomeMods, sortLibraryMods, type FavoritesSortId, type HomeSortId, type LibrarySortId } from './services/modSortService';
@@ -38,6 +39,7 @@ export default function App() {
   const mockState = useMockModState();
   const installPhases = useMockInstallPhases();
   const auth = useAuth();
+  const cloudSync = useCloudSync(auth.state.status);
   const [authOpen, setAuthOpen] = useState(false);
   const closeAuth = useCallback(() => setAuthOpen(false), []);
   const [route, setRoute] = useState<AppRoute>(routeFromHash);
@@ -182,6 +184,15 @@ export default function App() {
       )}
     >
       <UpdateOverlay />
+      {auth.state.status === 'authenticated' && (cloudSync.status === 'offline' || cloudSync.status === 'partial' || cloudSync.pendingOperations > 0) ? (
+        <div aria-live="polite" className={`cloud-sync-banner cloud-sync-banner--${cloudSync.status}`}>
+          {cloudSync.status === 'offline'
+            ? t('cloud.offline')
+            : cloudSync.status === 'partial'
+              ? t('cloud.partial')
+              : t('cloud.pending', { count: cloudSync.pendingOperations })}
+        </div>
+      ) : null}
       {authOpen ? (
         <AuthPanel
           forgotPassword={auth.forgotPassword}

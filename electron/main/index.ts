@@ -17,6 +17,16 @@ import {
   type RegisterInput,
   type UpdatePasswordInput,
 } from '../shared/auth';
+import {
+  CLOUD_SYNC_CHANNELS,
+  type CloudSettingsInput,
+  type CloudSyncInvokeChannel,
+  type DeviceSummaryInput,
+  type FavoriteMutationInput,
+  type LibraryRemoveInput,
+  type LibraryUpsertInput,
+  type SyncEventInput,
+} from '../shared/cloud-sync';
 
 import {
   WINDOW_CONTROL_CHANNELS,
@@ -28,6 +38,7 @@ import {
 } from '../shared/updater';
 import { UpdateService } from './update-service';
 import { AuthService, getAuthDeepLinkFromArguments } from './auth-service';
+import { CloudSyncService } from './cloud-sync-service';
 
 const DEFAULT_DEV_SERVER_URL = 'http://127.0.0.1:5173';
 const ALLOWED_WINDOW_CONTROL_CHANNELS: ReadonlySet<string> = new Set(
@@ -50,10 +61,18 @@ const ALLOWED_AUTH_INVOKE_CHANNELS: ReadonlySet<string> = new Set([
   AUTH_CHANNELS.refreshSession,
   AUTH_CHANNELS.logout,
 ]);
+const ALLOWED_CLOUD_SYNC_INVOKE_CHANNELS: ReadonlySet<string> = new Set([
+  CLOUD_SYNC_CHANNELS.getState, CLOUD_SYNC_CHANNELS.bootstrap,
+  CLOUD_SYNC_CHANNELS.updateSettings, CLOUD_SYNC_CHANNELS.setFavorite,
+  CLOUD_SYNC_CHANNELS.upsertLibrary, CLOUD_SYNC_CHANNELS.removeLibrary,
+  CLOUD_SYNC_CHANNELS.updateDeviceSummary, CLOUD_SYNC_CHANNELS.recordEvent,
+  CLOUD_SYNC_CHANNELS.retryPending,
+]);
 
 let mainWindow: BrowserWindow | null = null;
 let updateService: UpdateService | null = null;
 let authService: AuthService | null = null;
+let cloudSyncService: CloudSyncService | null = null;
 let pendingAuthDeepLink = getAuthDeepLinkFromArguments(process.argv);
 
 const getProductionRendererPath = (): string =>
@@ -123,6 +142,10 @@ function assertAllowedAuthChannel(
   }
 }
 
+function assertAllowedCloudSyncChannel(channel: string): asserts channel is CloudSyncInvokeChannel {
+  if (!ALLOWED_CLOUD_SYNC_INVOKE_CHANNELS.has(channel)) throw new Error('Rejected cloud-sync channel.');
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -160,6 +183,33 @@ const isUpdatePasswordInput = (value: unknown): value is UpdatePasswordInput =>
   hasExactKeys(value, ['password', 'passwordConfirm']) &&
   isBoundedString(value.password, 128) &&
   isBoundedString(value.passwordConfirm, 128);
+
+const isIsoDate = (value: unknown): value is string =>
+  typeof value === 'string' && value.length <= 40 && !Number.isNaN(Date.parse(value));
+const isModIdInput = (value: unknown): value is string =>
+  typeof value === 'string' && value.length >= 1 && value.length <= 120 && /^[a-z0-9-]+$/u.test(value);
+const isCloudSettingsInput = (value: unknown): value is CloudSettingsInput =>
+  isRecord(value) && hasExactKeys(value, ['theme', 'locale', 'accountPreferences', 'baseUpdatedAt']) &&
+  ['ice-max', 'dark', 'light'].includes(String(value.theme)) && ['en', 'tr'].includes(String(value.locale)) &&
+  (value.baseUpdatedAt === null || isIsoDate(value.baseUpdatedAt)) && isRecord(value.accountPreferences) &&
+  hasExactKeys(value.accountPreferences, ['autoDetectGames']) && typeof value.accountPreferences.autoDetectGames === 'boolean';
+const isFavoriteMutationInput = (value: unknown): value is FavoriteMutationInput =>
+  isRecord(value) && hasExactKeys(value, ['modId', 'favorite']) && isModIdInput(value.modId) && typeof value.favorite === 'boolean';
+const isLibraryUpsertInput = (value: unknown): value is LibraryUpsertInput =>
+  isRecord(value) && hasExactKeys(value, ['modId', 'installedAt', 'installedVersion']) && isModIdInput(value.modId) &&
+  isIsoDate(value.installedAt) && (value.installedVersion === null || isBoundedString(value.installedVersion, 80));
+const isLibraryRemoveInput = (value: unknown): value is LibraryRemoveInput =>
+  isRecord(value) && hasExactKeys(value, ['modId']) && isModIdInput(value.modId);
+const isDeviceSummaryInput = (value: unknown): value is DeviceSummaryInput =>
+  isRecord(value) && hasExactKeys(value, ['modId', 'state', 'installedVersion', 'observedAt']) && isModIdInput(value.modId) &&
+  ['installed', 'not_installed', 'unknown', 'needs_attention'].includes(String(value.state)) &&
+  (value.installedVersion === null || isBoundedString(value.installedVersion, 80)) && isIsoDate(value.observedAt);
+const isSyncEventInput = (value: unknown): value is SyncEventInput => {
+  if (!isRecord(value) || !hasExactKeys(value, ['name', 'metadata']) ||
+      !isBoundedString(value.name, 80) || value.name.length === 0 || !isRecord(value.metadata)) return false;
+  if (JSON.stringify(value.metadata).length > 2048) return false;
+  return Object.values(value.metadata).every((item) => item === null || ['string', 'number', 'boolean'].includes(typeof item));
+};
 
 const assertTrustedIpcSender = (
   event: IpcMainInvokeEvent,
@@ -344,9 +394,57 @@ const registerAuthHandlers = (
   registerHandler(AUTH_CHANNELS.logout, 0, () => service.logout());
 };
 
+const registerCloudSyncHandlers = (
+  window: BrowserWindow,
+  trustedRendererUrl: URL,
+  service: CloudSyncService,
+): void => {
+  const registerHandler = (
+    channel: CloudSyncInvokeChannel,
+    expectedArgumentCount: number,
+    action: (...args: readonly unknown[]) => unknown,
+  ) => {
+    ipcMain.removeHandler(channel);
+    ipcMain.handle(channel, (event, ...args: unknown[]) => {
+      assertAllowedCloudSyncChannel(channel);
+      assertTrustedIpcSender(event, window, trustedRendererUrl);
+      if (args.length !== expectedArgumentCount) throw new Error('Rejected invalid cloud-sync arguments.');
+      return action(...args);
+    });
+  };
+  registerHandler(CLOUD_SYNC_CHANNELS.getState, 0, () => service.getState());
+  registerHandler(CLOUD_SYNC_CHANNELS.bootstrap, 0, () => service.bootstrap());
+  registerHandler(CLOUD_SYNC_CHANNELS.retryPending, 0, () => service.retryPending());
+  registerHandler(CLOUD_SYNC_CHANNELS.updateSettings, 1, (input) => {
+    if (!isCloudSettingsInput(input)) throw new TypeError('Rejected cloud settings input.');
+    return service.updateSettings(input);
+  });
+  registerHandler(CLOUD_SYNC_CHANNELS.setFavorite, 1, (input) => {
+    if (!isFavoriteMutationInput(input)) throw new TypeError('Rejected favorite input.');
+    return service.setFavorite(input);
+  });
+  registerHandler(CLOUD_SYNC_CHANNELS.upsertLibrary, 1, (input) => {
+    if (!isLibraryUpsertInput(input)) throw new TypeError('Rejected library input.');
+    return service.upsertLibrary(input);
+  });
+  registerHandler(CLOUD_SYNC_CHANNELS.removeLibrary, 1, (input) => {
+    if (!isLibraryRemoveInput(input)) throw new TypeError('Rejected library input.');
+    return service.removeLibrary(input);
+  });
+  registerHandler(CLOUD_SYNC_CHANNELS.updateDeviceSummary, 1, (input) => {
+    if (!isDeviceSummaryInput(input)) throw new TypeError('Rejected device summary input.');
+    return service.updateDeviceSummary(input);
+  });
+  registerHandler(CLOUD_SYNC_CHANNELS.recordEvent, 1, (input) => {
+    if (!isSyncEventInput(input)) throw new TypeError('Rejected sync event input.');
+    return service.recordEvent(input);
+  });
+};
+
 const createMainWindow = async (
   service: UpdateService,
   authentication: AuthService,
+  cloudSync: CloudSyncService,
 ): Promise<BrowserWindow> => {
   const devServerUrl = getDevServerUrl();
   const trustedRendererUrl = getTrustedRendererUrl(devServerUrl);
@@ -376,6 +474,7 @@ const createMainWindow = async (
   registerWindowControlHandlers(window, trustedRendererUrl);
   registerUpdaterHandlers(window, trustedRendererUrl, service);
   registerAuthHandlers(window, trustedRendererUrl, authentication);
+  registerCloudSyncHandlers(window, trustedRendererUrl, cloudSync);
 
   window.once('ready-to-show', () => {
     window.show();
@@ -461,7 +560,14 @@ if (!hasSingleInstanceLock) {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send(AUTH_CHANNELS.stateChanged, state);
         }
+        if (state.status === 'authenticated') void cloudSyncService?.bootstrap();
+        else cloudSyncService?.signOut();
       },
+    });
+    cloudSyncService = await CloudSyncService.create(authService, (state) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(CLOUD_SYNC_CHANNELS.stateChanged, state);
+      }
     });
     await authService.restoreSession();
     if (pendingAuthDeepLink) {
@@ -469,12 +575,12 @@ if (!hasSingleInstanceLock) {
       pendingAuthDeepLink = null;
       await authService.handleDeepLink(deepLink);
     }
-    mainWindow = await createMainWindow(updateService, authService);
+    mainWindow = await createMainWindow(updateService, authService, cloudSyncService);
     updateService.scheduleAutomaticCheck();
 
     app.on('activate', () => {
-      if (!mainWindow && updateService && authService) {
-        void createMainWindow(updateService, authService).then((window) => {
+      if (!mainWindow && updateService && authService && cloudSyncService) {
+        void createMainWindow(updateService, authService, cloudSyncService).then((window) => {
           mainWindow = window;
         });
       }

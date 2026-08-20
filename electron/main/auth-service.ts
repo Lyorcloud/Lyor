@@ -234,6 +234,11 @@ export class AuthService {
     return this.#state;
   }
 
+  /** Main-process-only capability. Never expose this client through preload. */
+  getCloudClient(): SupabaseClient | null {
+    return this.#client;
+  }
+
   async restoreSession(): Promise<AuthState> {
     if (!this.#client) return this.#state;
     const { data, error } = await this.#client.auth.getSession();

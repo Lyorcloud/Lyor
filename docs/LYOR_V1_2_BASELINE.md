@@ -1,9 +1,35 @@
 # Lyor V1.2 Baseline and Architecture Contract
 
 Status: normative V1.2 milestone memory  
-Current milestone: Milestone 2 — Supabase Authentication + Security Foundation
+Current milestone: Milestone 3 — User Cloud / Multi-PC / Sync
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
+
+## Milestone 3 user cloud and multi-PC contract
+
+Milestone 3 activates standard authenticated CRUD/sync over the Milestone 2
+boundary. Theme, language, safe account preferences, Favorites, logical Cloud
+Library membership, random installation-scoped Devices, and per-device summary
+metadata are cloud state. Bootstrap is ordered as Authenticate, Profile,
+Settings, Favorites, Library, Device, Device Summaries, then Home; each step is
+isolated so cached data remains usable after a partial or network failure.
+
+The main process owns Supabase CRUD, a persistent per-account cache, random
+Device ID, and an idempotent pending queue with exponential retry. Renderer IPC
+remains narrow and token-free. Settings use optimistic local updates and a
+cloud revision for conflict detection; on conflict the current cloud revision
+wins and is applied back to the local cache.
+
+Cloud Library membership is account ownership, not installation truth.
+Another device's `installed` summary never marks the current PC installed.
+Reconciliation updates this device's cloud summary from local metadata and
+never deletes Cloud Library membership. Absolute game/launcher/executable
+paths, cache, staging, backups, journals, file ownership, and physical state
+are prohibited from cloud payloads and schemas. Logout clears auth state but
+does not delete these local facts, cached account data, or pending operations.
+
+Installation Engine, Planaria, R2/object distribution, and updater changes are
+not authorized by this milestone.
 
 ## Milestone 2 authentication and security contract
 
@@ -93,11 +119,11 @@ account-level state. This layer may know a user’s account preferences,
 favorites, entitlements, and cloud-visible logical records after their owning
 milestones authorize them.
 
-Current comparison: the Milestone 2 Auth client and user-owned schema/RLS
-foundation are implemented. The client exists only in Electron main; renderer
-has no Supabase import, token, or privileged key. Full Favorites/Library/Settings
-sync remains blocked, so existing renderer `localStorage` values are still
-device-local prototype state and must not be relabeled as cloud truth.
+Current comparison: the Milestone 2 Auth boundary and Milestone 3 account sync
+are implemented. The client exists only in Electron main; renderer has no
+Supabase import, token, or privileged key. Favorites, logical Library, settings,
+devices, and safe summaries sync through typed IPC. Physical install state and
+all sensitive local paths remain device-local.
 
 Security contract: RLS is mandatory for exposed user data, authorization must
 be ownership-based, and service-role/secret keys must never enter the renderer.

@@ -147,6 +147,9 @@ export const en = {
   'auth.error.sessionExpired': 'Your session expired. Sign in again.',
   'auth.error.networkUnavailable': 'The authentication service is unavailable.',
   'auth.error.requestFailed': 'The request could not be completed.',
+  'cloud.offline': 'Offline — cached account data is available. Cloud changes will retry automatically.',
+  'cloud.partial': 'Some cloud data could not be refreshed. Lyor is using the available cache.',
+  'cloud.pending': '{{count}} cloud change(s) waiting to sync.',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -300,6 +303,9 @@ export const tr = {
   'auth.error.sessionExpired': 'Oturumun sona erdi. Yeniden giriş yap.',
   'auth.error.networkUnavailable': 'Kimlik doğrulama servisine ulaşılamıyor.',
   'auth.error.requestFailed': 'İstek tamamlanamadı.',
+  'cloud.offline': 'Çevrimdışı — önbellekteki hesap verileri kullanılabilir. Bulut değişiklikleri otomatik yeniden denenecek.',
+  'cloud.partial': 'Bazı bulut verileri yenilenemedi. Lyor kullanılabilir önbelleği kullanıyor.',
+  'cloud.pending': '{{count}} bulut değişikliği eşitlenmeyi bekliyor.',
 } as const satisfies Record<TranslationKey, string>;
 
 export const messages = { en, tr } as const;

@@ -98,6 +98,13 @@ deny-by-default RLS migrations for the named user-owned tables. Full cloud
 sync, remote catalog/content management, object storage, service-role desktop
 access, and physical installation behavior remain excluded.
 
+V1.2 Milestone 3 further authorizes user-owned cloud synchronization for safe
+settings, Favorites, logical Cloud Library membership, random device records,
+and non-authoritative per-device installation summaries. It does not authorize
+uploading absolute paths, journals, backups, cache/staging state, file
+ownership, or physical installed truth. Those remain device-local and the
+future Installation Engine remains authoritative.
+
 ## 5. Technology and deliverable
 
 - Current stable Electron

@@ -81,6 +81,19 @@ Supabase sessions stay out of renderer storage and renderer bundles. Database
 authorization is deny-by-default RLS plus explicit grants; user-editable
 metadata is never an authorization source.
 
+### V1.2 Milestone 3 narrow supersession
+
+Milestone 3 authorizes authenticated account CRUD/sync for theme, language,
+safe account preferences, Favorites, logical Cloud Library membership, random
+installation-scoped Devices, and non-authoritative device installation
+summaries. Sync must use a persistent local cache and idempotent pending queue.
+Absolute paths, cache/staging/backups, transaction journals, file ownership,
+and physical installation truth remain local-only. A cloud summary can never
+authorize filesystem work or make another PC appear physically installed.
+Logout clears the session but must retain device-local installation data and
+cached account/queue data. Installation Engine, Planaria, R2, and updater work
+remain blocked.
+
 V1 is intended to support regular mods and third-party trainer packages prepared by an administrator. This does not authorize a community upload flow or a native Lyor trainer.
 
 The current implementation must not access GTA V or RPF files and must not implement the real mod installation/uninstallation engine. Install and Uninstall UI state must go through an isolated service explicitly named as a mock. Game discovery/path controls also remain explicitly mock-only until a real discovery engine is separately authorized. Do not disguise mock state as filesystem behavior. The application updater is an explicit exception: it is real infrastructure implemented with `electron-updater` in the main process and is not part of the mod engine.

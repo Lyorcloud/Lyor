@@ -10,6 +10,11 @@ contains its exact application version and architecture.
 
 This repository contains the secure Electron foundation, Figma-aligned UI shell, complete local Settings view, Supabase email/password authentication boundary, and the real Windows application-updater boundary. Mod Install/Uninstall and game discovery remain intentionally mock-only at this stage: no GTA V or RPF files are read or changed.
 
+Milestone 3 adds account-level sync for theme, language, safe preferences,
+Favorites, Cloud Library membership, random Devices, and non-authoritative
+installation summaries. It deliberately does not sync absolute paths, backups,
+journals, cache/staging, file ownership, or physical installation truth.
+
 The V1.2 milestone and architecture contract is in
 [`docs/LYOR_V1_2_BASELINE.md`](docs/LYOR_V1_2_BASELINE.md). The implemented
 foundation scope remains in [`docs/LYOR_V1_SPEC.md`](docs/LYOR_V1_SPEC.md), and
@@ -133,6 +138,13 @@ This resets only the local Supabase database, runs RLS tests, then runs the
 real local Auth API flow tests. It does not link, push, deploy, or modify a
 remote project.
 
+Cloud bootstrap follows Authenticate → Profile → Settings → Favorites →
+Library → Device → Device Summaries → Home. The main process persists a local
+cache and idempotent retry queue under Electron `userData`, so offline changes
+are retried without making local uninstall/backup behavior cloud-dependent.
+Each installation receives a random persistent UUID; no hardware fingerprint
+is generated.
+
 ## Figma
 
 Visual reference: [Lyor in Figma](https://www.figma.com/design/sZtHJ0VLe4VssHIGC49fuA/Lyor?node-id=10-2)
@@ -148,6 +160,6 @@ Reference nodes:
 
 ## Scope guardrails
 
-V1 contains Home, Library, Mods, Search, Favorites, and Settings. V1.2 Milestone 1 narrowly adds local sorting and richer mock-only Library/install UI states. Milestone 2 narrowly adds Supabase authentication and deny-by-default account-data security foundations. It does not add full cloud sync, Planaria content management, R2/object distribution, community uploads, ratings/reviews/comments, mod or game detail pages, filters, general product notifications, Premium, real mod updates, user-facing Restore/Rollback features, an admin panel UI, or a Lyor-built trainer system. The narrowly scoped update-available banner belongs only to the real application updater.
+V1 contains Home, Library, Mods, Search, Favorites, and Settings. V1.2 Milestone 1 adds the named interface behavior, Milestone 2 adds authentication/security, and Milestone 3 adds the named account sync. It does not add Planaria content management, R2/object distribution, community uploads, ratings/reviews/comments, mod or game detail pages, filters, general product notifications, Premium, real mod updates, user-facing Restore/Rollback features, an admin panel UI, a Lyor-built trainer system, or the real Installation Engine. The narrowly scoped update-available banner belongs only to the existing application updater.
 
 Regular mods and administrator-prepared third-party trainer packages are intended for eventual V1 support. The real game-file engine is not part of the current foundation and must not be added without a new explicit implementation scope.

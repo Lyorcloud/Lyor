@@ -12,6 +12,7 @@ import {
   type AppSettingsContextValue,
   type ThemeId,
 } from './AppSettingsContext';
+import { queueCloudSettings } from '../services/cloudSettingsClient';
 
 const SETTINGS_STORAGE_KEY = 'lyor.settings.v1';
 
@@ -84,9 +85,11 @@ export function AppSettingsProvider({ children }: PropsWithChildren): ReactEleme
     autoDetectGames: settings.autoDetectGames,
     setAutoDetectGames: (autoDetectGames) => {
       setSettings((current) => ({ ...current, autoDetectGames }));
+      queueCloudSettings({ autoDetectGames });
     },
     setTheme: (theme) => {
       setSettings((current) => ({ ...current, theme }));
+      queueCloudSettings({ theme });
     },
     theme: settings.theme,
   }), [settings.autoDetectGames, settings.theme]);

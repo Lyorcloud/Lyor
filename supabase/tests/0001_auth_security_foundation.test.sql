@@ -83,7 +83,7 @@ select throws_ok(
   '42501', null, 'unauthenticated profile read is denied'
 );
 select throws_ok(
-  $$insert into public.devices (user_id, device_label) values ('10000000-0000-0000-0000-000000000001', 'unauthorized')$$,
+  $$insert into public.devices (user_id, device_name) values ('10000000-0000-0000-0000-000000000001', 'unauthorized')$$,
   '42501', null, 'unauthenticated device insert is denied'
 );
 

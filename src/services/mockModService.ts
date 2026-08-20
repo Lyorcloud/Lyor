@@ -1,6 +1,7 @@
 import { mockGames } from '../data/mockGames';
 import { mockMods } from '../data/mockMods';
 import { MOD_IDS, type GameId, type LibraryCardState, type MockCloudLibraryEntry, type MockInstallPhase, type MockModOperationResult, type MockModState, type Mod, type ModId } from '../types/domain';
+import type { CloudAccountCache } from '../../electron/shared/cloud-sync';
 
 export const MOCK_MOD_STORAGE_KEY = 'lyor.mock-mod-state.v2';
 const LEGACY_STORAGE_KEY = 'lyor.mock-mod-state.v1';
@@ -125,6 +126,9 @@ export async function runMockInstallWorkflow(modId: ModId, options: { readonly f
   await wait(stepMs);
   if (options.fail) { setWorkflowPhase(modId, 'failure'); return 'failure'; }
   publishState(updateEntry(modId, 'installed'));
+  const installedAt = new Date().toISOString();
+  void window.lyorCloudSync?.upsertLibrary({ modId, installedAt, installedVersion: null }).catch(() => undefined);
+  void window.lyorCloudSync?.updateDeviceSummary({ modId, state: 'installed', installedVersion: null, observedAt: installedAt }).catch(() => undefined);
   setWorkflowPhase(modId, 'success');
   await wait(stepMs);
   setWorkflowPhase(modId, 'idle');
@@ -140,6 +144,7 @@ export async function mockUninstallMod(modId: ModId): Promise<MockModOperationRe
   requireMockMod(modId);
   const changed = getMockModState().installedModIds.includes(modId);
   if (changed) publishState(updateEntry(modId, 'not-installed'));
+  if (changed) void window.lyorCloudSync?.updateDeviceSummary({ modId, state: 'not_installed', installedVersion: null, observedAt: new Date().toISOString() }).catch(() => undefined);
   await wait(200);
   return { modId, operation: 'uninstall', status: 'available', changed };
 }
@@ -147,6 +152,7 @@ export function removeMockLibraryEntry(modId: ModId): void {
   requireMockMod(modId);
   const current = getMockModState();
   publishState(freezeState({ ...current, libraryEntries: current.libraryEntries.filter((entry) => entry.modId !== modId) }));
+  void window.lyorCloudSync?.removeLibrary({ modId }).catch(() => undefined);
 }
 export function setMockFavorite(modId: ModId, favorite: boolean): MockModState {
   requireMockMod(modId);
@@ -155,9 +161,58 @@ export function setMockFavorite(modId: ModId, favorite: boolean): MockModState {
   const dates = { ...current.favoriteAddedAt };
   if (favorite) dates[modId] = dates[modId] ?? new Date().toISOString(); else delete dates[modId];
   publishState(freezeState({ ...current, favoriteAddedAt: dates, favoriteModIds: ids }));
+  void window.lyorCloudSync?.setFavorite({ modId, favorite }).catch(() => undefined);
   return getMockModState();
 }
 export function toggleMockFavorite(modId: ModId): MockModState { return setMockFavorite(modId, !getMockModState().favoriteModIds.includes(modId)); }
 export function getMockInstalledMods(): readonly Mod[] { const ids = new Set(getMockModState().installedModIds); return mockMods.filter((mod) => ids.has(mod.id)); }
 export function getMockFavoriteMods(): readonly Mod[] { const ids = new Set(getMockModState().favoriteModIds); return mockMods.filter((mod) => ids.has(mod.id)); }
 export function resetMockModServiceForTests(): void { stateSnapshot = undefined; workflowPhases.clear(); workflowSnapshot = new Map(); }
+
+/** Applies account ownership without treating another device's summary as local physical truth. */
+export function hydrateCloudAccountState(account: CloudAccountCache): MockModState {
+  const current = getMockModState();
+  const storage = getLocalStorage();
+  const hasLocalDeviceState = Boolean(storage?.getItem(MOCK_MOD_STORAGE_KEY));
+  const favorites = account.favorites.filter((item) => isModId(item.modId));
+  const library = account.library.filter((item) => isModId(item.modId));
+  const localInstallationState = hasLocalDeviceState
+    ? current.localInstallationState
+    : Object.fromEntries(library.map((entry) => [entry.modId, 'not-installed' as const]));
+  const next = freezeState({
+    ...current,
+    favoriteModIds: favorites.map((item) => item.modId as ModId),
+    favoriteAddedAt: Object.fromEntries(favorites.map((item) => [item.modId, item.createdAt])),
+    libraryEntries: library.map((item) => ({
+      modId: item.modId as ModId,
+      addedAt: item.createdAt,
+      installedAt: item.lastInstalledAt,
+    })),
+    localInstallationState,
+  });
+  publishState(next);
+  return next;
+}
+
+/** Local mock metadata wins reconciliation; Cloud Library membership is never removed here. */
+export async function reconcileCloudAccountState(account: CloudAccountCache): Promise<void> {
+  const bridge = window.lyorCloudSync;
+  if (!bridge || !account.device) return;
+  const local = getMockModState();
+  const summaries = account.deviceSummaries.filter((item) => item.deviceId === account.device?.id);
+  for (const entry of account.library) {
+    if (!isModId(entry.modId)) continue;
+    const state = local.localInstallationState[entry.modId];
+    const installed = state === 'installed' || state === 'update-available';
+    const summary = summaries.find((item) => item.modId === entry.modId);
+    const desired = installed ? 'installed' : 'not_installed';
+    if (summary?.state !== desired) {
+      await bridge.updateDeviceSummary({
+        modId: entry.modId,
+        state: desired,
+        installedVersion: installed ? entry.lastInstalledVersion : null,
+        observedAt: new Date().toISOString(),
+      }).catch(() => undefined);
+    }
+  }
+}

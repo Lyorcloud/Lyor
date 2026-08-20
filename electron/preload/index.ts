@@ -12,6 +12,16 @@ import type {
   RegisterInput,
   UpdatePasswordInput,
 } from '../shared/auth';
+import type {
+  CloudSettingsInput,
+  CloudSyncState,
+  DeviceSummaryInput,
+  FavoriteMutationInput,
+  LibraryRemoveInput,
+  LibraryUpsertInput,
+  LyorCloudSyncApi,
+  SyncEventInput,
+} from '../shared/cloud-sync';
 
 import type {
   WindowControlChannel,
@@ -54,6 +64,13 @@ const PRELOAD_AUTH_CHANNELS = {
   refreshSession: 'auth:refresh-session',
   logout: 'auth:logout',
   stateChanged: 'auth:state-changed',
+} as const;
+
+const PRELOAD_CLOUD_SYNC_CHANNELS = {
+  getState: 'cloud-sync:get-state', bootstrap: 'cloud-sync:bootstrap', updateSettings: 'cloud-sync:update-settings',
+  setFavorite: 'cloud-sync:set-favorite', upsertLibrary: 'cloud-sync:upsert-library', removeLibrary: 'cloud-sync:remove-library',
+  updateDeviceSummary: 'cloud-sync:update-device-summary', recordEvent: 'cloud-sync:record-event', retryPending: 'cloud-sync:retry-pending',
+  stateChanged: 'cloud-sync:state-changed',
 } as const;
 
 const AUTH_STATUSES: ReadonlySet<string> = new Set<AuthStatus>([
@@ -176,6 +193,28 @@ const isAuthResult = (value: unknown): value is AuthResult => {
       candidate.notice === 'resetSent' || candidate.notice === 'passwordUpdated');
 };
 
+const isCloudSyncState = (value: unknown): value is CloudSyncState => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  const statuses = ['signedOut', 'bootstrapping', 'ready', 'partial', 'offline'];
+  const steps = candidate.steps;
+  if (!statuses.includes(String(candidate.status)) || typeof candidate.pendingOperations !== 'number' ||
+      !Number.isInteger(candidate.pendingOperations) || candidate.pendingOperations < 0 ||
+      !(candidate.lastSyncedAt === null || typeof candidate.lastSyncedAt === 'string') ||
+      typeof steps !== 'object' || steps === null || Array.isArray(steps)) return false;
+  const validStep = (step: string) => ['pending', 'loading', 'ready', 'failed'].includes(String((steps as Record<string, unknown>)[step]));
+  if (!['authenticate', 'profile', 'settings', 'favorites', 'library', 'device', 'deviceSummaries', 'home'].every(validStep)) return false;
+  if (!(candidate.account === null || (typeof candidate.account === 'object' && !Array.isArray(candidate.account)))) return false;
+  return candidate.error === null || (typeof candidate.error === 'object' && candidate.error !== null &&
+    typeof (candidate.error as Record<string, unknown>).code === 'string' && typeof (candidate.error as Record<string, unknown>).message === 'string');
+};
+
+const invokeCloudSync = async (channel: string, input?: unknown): Promise<CloudSyncState> => {
+  const result: unknown = input === undefined ? await ipcRenderer.invoke(channel) : await ipcRenderer.invoke(channel, input);
+  if (!isCloudSyncState(result)) throw new TypeError('Invalid cloud-sync response.');
+  return result;
+};
+
 const invokeAuthState = async (): Promise<AuthState> => {
   const result: unknown = await ipcRenderer.invoke(PRELOAD_AUTH_CHANNELS.getState);
   if (!isAuthState(result)) throw new TypeError('Invalid auth state response.');
@@ -270,6 +309,26 @@ const lyorAuth: Readonly<LyorAuthApi> = Object.freeze({
   },
 });
 
+const lyorCloudSync: Readonly<LyorCloudSyncApi> = Object.freeze({
+  getState: () => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.getState),
+  bootstrap: () => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.bootstrap),
+  updateSettings: (input: CloudSettingsInput) => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.updateSettings, input),
+  setFavorite: (input: FavoriteMutationInput) => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.setFavorite, input),
+  upsertLibrary: (input: LibraryUpsertInput) => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.upsertLibrary, input),
+  removeLibrary: (input: LibraryRemoveInput) => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.removeLibrary, input),
+  updateDeviceSummary: (input: DeviceSummaryInput) => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.updateDeviceSummary, input),
+  recordEvent: (input: SyncEventInput) => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.recordEvent, input),
+  retryPending: () => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.retryPending),
+  onStateChange: (listener: (state: CloudSyncState) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, value: unknown): void => {
+      if (isCloudSyncState(value)) listener(value);
+    };
+    ipcRenderer.on(PRELOAD_CLOUD_SYNC_CHANNELS.stateChanged, handler);
+    return () => ipcRenderer.removeListener(PRELOAD_CLOUD_SYNC_CHANNELS.stateChanged, handler);
+  },
+});
+
 contextBridge.exposeInMainWorld('windowControls', windowControls);
 contextBridge.exposeInMainWorld('lyorUpdater', lyorUpdater);
 contextBridge.exposeInMainWorld('lyorAuth', lyorAuth);
+contextBridge.exposeInMainWorld('lyorCloudSync', lyorCloudSync);
