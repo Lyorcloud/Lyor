@@ -94,9 +94,20 @@ Logout clears the session but must retain device-local installation data and
 cached account/queue data. Installation Engine, Planaria, R2, and updater work
 remain blocked.
 
+### V1.2 Milestone 4 narrow supersession
+
+Milestone 4 authorizes only the privileged generic-file Installation Engine
+core recorded in `docs/LYOR_V1_2_BASELINE.md`: versioned manifest v1, verified
+edition-aware game detection contracts, ordinary copy/replace/delete/create
+operations, local ownership metadata, verified backups, and safe uninstall.
+Renderer access is limited to main-approved IDs over narrow validated IPC; it
+never receives filesystem or arbitrary-path capability. Durable downloads,
+full transaction journals/crash recovery, archive/config adapters, Planaria,
+object storage, and production game/RPF adapters remain blocked.
+
 V1 is intended to support regular mods and third-party trainer packages prepared by an administrator. This does not authorize a community upload flow or a native Lyor trainer.
 
-The current implementation must not access GTA V or RPF files and must not implement the real mod installation/uninstallation engine. Install and Uninstall UI state must go through an isolated service explicitly named as a mock. Game discovery/path controls also remain explicitly mock-only until a real discovery engine is separately authorized. Do not disguise mock state as filesystem behavior. The application updater is an explicit exception: it is real infrastructure implemented with `electron-updater` in the main process and is not part of the mod engine.
+The current implementation must not access GTA V or RPF files. Milestone 4's real generic-file core may operate only on main-approved paths; tests use isolated fixtures and no production game is auto-registered yet. Visible Install and Uninstall UI state continues through the isolated mock service until verified catalog/package inputs are authorized. Game discovery UI also remains explicitly mock-only; do not disguise it as verified detection. The application updater is an explicit exception: it is real infrastructure implemented with `electron-updater` in the main process and is not part of the mod engine.
 
 ## Required technology and platform
 

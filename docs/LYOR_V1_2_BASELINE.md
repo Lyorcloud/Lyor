@@ -1,9 +1,36 @@
 # Lyor V1.2 Baseline and Architecture Contract
 
 Status: normative V1.2 milestone memory  
-Current milestone: Milestone 3 — User Cloud / Multi-PC / Sync
+Current milestone: Milestone 4 — Installation Engine Core
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
+
+## Milestone 4 local installation engine contract
+
+Milestone 4 activates a privileged, device-local engine core for ordinary file
+packages only. The renderer can submit only main-approved game-detection and
+package-input IDs over a narrow validated IPC API; it cannot supply arbitrary
+filesystem paths, manifests, commands, or raw filesystem operations. Steam,
+Epic, Rockstar, Xbox PC, and Manual are detection-provider contracts. A result
+is usable only after provider verification and carries a stable edition-aware
+Game ID such as `gta5-legacy` or `gta5-enhanced`.
+
+`contracts/installation-manifest.schema.json` is the versioned manifest source
+of truth. Version 1 permits only `COPY_FILE`, `COPY_FOLDER`, `REPLACE_FILE`,
+`DELETE_FILE`, and `CREATE_DIRECTORY`, with safe relative paths and the
+`generic-files` adapter. It cannot run executables, scripts, setup programs, or
+archive/container operations. Canonical containment and link/reparse checks
+apply to both package and game roots.
+
+The local atomic metadata record owns the manifest digest, game/edition/version,
+installed version, operation history, file hashes, and verified original backup
+relationships. Uninstall removes only unchanged Lyor-owned files and restores
+only hash-verified originals. Missing/tampered/unowned paths fail closed. Cloud
+Library membership and device summaries cannot authorize a physical operation.
+
+Milestone 5 durable downloads, journals, crash recovery, dependency execution,
+and full transaction phases; Milestone 6 archive/config adapters; Planaria; and
+object distribution remain blocked until their named milestones.
 
 ## Milestone 3 user cloud and multi-PC contract
 
@@ -153,11 +180,12 @@ Future responsibility: device game paths, staging, cache, backups, journals,
 ownership records, conflict handling, transactional recovery, physical file
 changes, and uninstall truth.
 
-Current comparison: absent and blocked. `mockModService` and
-`mockGameDiscoveryService` are renderer-only UI simulations. They do not access
-the filesystem, discover games, or establish installation ownership. The only
-current privileged filesystem write is the unrelated updater preference under
-Electron `userData`.
+Current comparison: the Milestone 4 generic-file engine, manifest parser,
+verified detection registry, safe path resolver, backup/ownership metadata, and
+install/uninstall core are implemented in Electron main. The existing
+`mockModService` and `mockGameDiscoveryService` remain renderer-only UI
+simulations and are not represented as real detection or installation results.
+Durable download/journal/recovery and advanced adapters remain gated.
 
 Local/physical truth belongs to the device. Cloud records cannot prove that a
 file exists, that a game path is valid, that an install completed, or that a

@@ -8,12 +8,18 @@ through `0.1.3` are development/prototype builds. The production patch line is
 user-facing installer family name; each generated installer filename also
 contains its exact application version and architecture.
 
-This repository contains the secure Electron foundation, Figma-aligned UI shell, complete local Settings view, Supabase email/password authentication boundary, and the real Windows application-updater boundary. Mod Install/Uninstall and game discovery remain intentionally mock-only at this stage: no GTA V or RPF files are read or changed.
+This repository contains the secure Electron foundation, Figma-aligned UI shell, complete local Settings view, Supabase email/password authentication boundary, the real Windows application-updater boundary, and a main-process-only generic-file Installation Engine core. The visible Mod Install/Uninstall and game discovery UI remain intentionally mock-only: no production GTA V or RPF path is registered, read, or changed.
 
 Milestone 3 adds account-level sync for theme, language, safe preferences,
 Favorites, Cloud Library membership, random Devices, and non-authoritative
 installation summaries. It deliberately does not sync absolute paths, backups,
 journals, cache/staging, file ownership, or physical installation truth.
+
+Milestone 4 adds the versioned Installation Manifest, verified edition-aware
+detection contract, ordinary file copy/replace/delete operations, atomic local
+ownership metadata, verified backups, and safe uninstall. Renderer calls carry
+only main-approved IDs; arbitrary paths and filesystem capabilities never cross
+preload. The end-to-end engine tests use temporary synthetic fixtures only.
 
 The V1.2 milestone and architecture contract is in
 [`docs/LYOR_V1_2_BASELINE.md`](docs/LYOR_V1_2_BASELINE.md). The implemented
@@ -24,7 +30,7 @@ repository implementation rules are in [`AGENTS.md`](AGENTS.md).
 
 `Home / Mods -> ModCard -> Install -> Library -> same ModCard -> Uninstall -> game restored to its original state`
 
-The final restoration behavior belongs to the future real installation engine. The current foundation uses an explicitly named mock service only to exercise UI state.
+The generic-file engine proves restoration against synthetic fixtures. The current UI still uses an explicitly named mock service until verified package and game inputs are connected by their owning milestones.
 
 ## Stack and target
 
@@ -160,6 +166,6 @@ Reference nodes:
 
 ## Scope guardrails
 
-V1 contains Home, Library, Mods, Search, Favorites, and Settings. V1.2 Milestone 1 adds the named interface behavior, Milestone 2 adds authentication/security, and Milestone 3 adds the named account sync. It does not add Planaria content management, R2/object distribution, community uploads, ratings/reviews/comments, mod or game detail pages, filters, general product notifications, Premium, real mod updates, user-facing Restore/Rollback features, an admin panel UI, a Lyor-built trainer system, or the real Installation Engine. The narrowly scoped update-available banner belongs only to the existing application updater.
+V1 contains Home, Library, Mods, Search, Favorites, and Settings. V1.2 Milestone 1 adds the named interface behavior, Milestone 2 adds authentication/security, Milestone 3 adds account sync, and Milestone 4 adds only the local generic-file engine core. It does not yet add Planaria content management, R2/object distribution, advanced archive/config adapters, production game/RPF support, community uploads, ratings/reviews/comments, mod or game detail pages, filters, general product notifications, Premium, real mod updates, user-facing Restore/Rollback controls, an admin panel UI, or a Lyor-built trainer system. The narrowly scoped update-available banner belongs only to the existing application updater.
 
 Regular mods and administrator-prepared third-party trainer packages are intended for eventual V1 support. The real game-file engine is not part of the current foundation and must not be added without a new explicit implementation scope.

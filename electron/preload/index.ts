@@ -22,6 +22,13 @@ import type {
   LyorCloudSyncApi,
   SyncEventInput,
 } from '../shared/cloud-sync';
+import type {
+  InstallationEngineResult,
+  InstallationEngineState,
+  InstallationTarget,
+  LyorInstallationEngineApi,
+  UninstallTarget,
+} from '../shared/installation-engine';
 
 import type {
   WindowControlChannel,
@@ -71,6 +78,11 @@ const PRELOAD_CLOUD_SYNC_CHANNELS = {
   setFavorite: 'cloud-sync:set-favorite', upsertLibrary: 'cloud-sync:upsert-library', removeLibrary: 'cloud-sync:remove-library',
   updateDeviceSummary: 'cloud-sync:update-device-summary', recordEvent: 'cloud-sync:record-event', retryPending: 'cloud-sync:retry-pending',
   stateChanged: 'cloud-sync:state-changed',
+} as const;
+const PRELOAD_INSTALLATION_ENGINE_CHANNELS = {
+  getState: 'installation-engine:get-state',
+  install: 'installation-engine:install',
+  uninstall: 'installation-engine:uninstall',
 } as const;
 
 const AUTH_STATUSES: ReadonlySet<string> = new Set<AuthStatus>([
@@ -208,6 +220,28 @@ const isCloudSyncState = (value: unknown): value is CloudSyncState => {
   return candidate.error === null || (typeof candidate.error === 'object' && candidate.error !== null &&
     typeof (candidate.error as Record<string, unknown>).code === 'string' && typeof (candidate.error as Record<string, unknown>).message === 'string');
 };
+const isInstallationEngineResult = (value: unknown): value is InstallationEngineResult => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.ok === 'boolean' &&
+    ['not-installed', 'already-installed', 'update-available', 'reinstall-required'].includes(String(candidate.disposition)) &&
+    isNullableString(candidate.modId) && isNullableString(candidate.version) &&
+    (candidate.error === null || (typeof candidate.error === 'object' && candidate.error !== null &&
+      typeof (candidate.error as Record<string, unknown>).code === 'string' &&
+      typeof (candidate.error as Record<string, unknown>).message === 'string'));
+};
+const isInstallationEngineState = (value: unknown): value is InstallationEngineState => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return Array.isArray(candidate.detections) && Array.isArray(candidate.installed) &&
+    candidate.detections.every((item) => typeof item === 'object' && item !== null &&
+      typeof (item as Record<string, unknown>).detectionId === 'string' &&
+      (item as Record<string, unknown>).verified === true && !('rootPath' in (item as Record<string, unknown>)) &&
+      !('executablePath' in (item as Record<string, unknown>))) &&
+    candidate.installed.every((item) => typeof item === 'object' && item !== null &&
+      typeof (item as Record<string, unknown>).modId === 'string' &&
+      typeof (item as Record<string, unknown>).version === 'string');
+};
 
 const invokeCloudSync = async (channel: string, input?: unknown): Promise<CloudSyncState> => {
   const result: unknown = input === undefined ? await ipcRenderer.invoke(channel) : await ipcRenderer.invoke(channel, input);
@@ -328,7 +362,23 @@ const lyorCloudSync: Readonly<LyorCloudSyncApi> = Object.freeze({
   },
 });
 
+const invokeEngineResult = async (channel: string, input: unknown): Promise<InstallationEngineResult> => {
+  const result: unknown = await ipcRenderer.invoke(channel, input);
+  if (!isInstallationEngineResult(result)) throw new TypeError('Invalid installation-engine response.');
+  return result;
+};
+const lyorInstallationEngine: Readonly<LyorInstallationEngineApi> = Object.freeze({
+  getState: async () => {
+    const result: unknown = await ipcRenderer.invoke(PRELOAD_INSTALLATION_ENGINE_CHANNELS.getState);
+    if (!isInstallationEngineState(result)) throw new TypeError('Invalid installation-engine state.');
+    return result;
+  },
+  install: (input: InstallationTarget) => invokeEngineResult(PRELOAD_INSTALLATION_ENGINE_CHANNELS.install, input),
+  uninstall: (input: UninstallTarget) => invokeEngineResult(PRELOAD_INSTALLATION_ENGINE_CHANNELS.uninstall, input),
+});
+
 contextBridge.exposeInMainWorld('windowControls', windowControls);
 contextBridge.exposeInMainWorld('lyorUpdater', lyorUpdater);
 contextBridge.exposeInMainWorld('lyorAuth', lyorAuth);
 contextBridge.exposeInMainWorld('lyorCloudSync', lyorCloudSync);
+contextBridge.exposeInMainWorld('lyorInstallationEngine', lyorInstallationEngine);

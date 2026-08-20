@@ -27,6 +27,12 @@ import {
   type LibraryUpsertInput,
   type SyncEventInput,
 } from '../shared/cloud-sync';
+import {
+  INSTALLATION_ENGINE_CHANNELS,
+  type InstallationEngineInvokeChannel,
+  type InstallationTarget,
+  type UninstallTarget,
+} from '../shared/installation-engine';
 
 import {
   WINDOW_CONTROL_CHANNELS,
@@ -39,6 +45,7 @@ import {
 import { UpdateService } from './update-service';
 import { AuthService, getAuthDeepLinkFromArguments } from './auth-service';
 import { CloudSyncService } from './cloud-sync-service';
+import { InstallationEngineService } from './installation-engine/service';
 
 const DEFAULT_DEV_SERVER_URL = 'http://127.0.0.1:5173';
 const ALLOWED_WINDOW_CONTROL_CHANNELS: ReadonlySet<string> = new Set(
@@ -68,11 +75,15 @@ const ALLOWED_CLOUD_SYNC_INVOKE_CHANNELS: ReadonlySet<string> = new Set([
   CLOUD_SYNC_CHANNELS.updateDeviceSummary, CLOUD_SYNC_CHANNELS.recordEvent,
   CLOUD_SYNC_CHANNELS.retryPending,
 ]);
+const ALLOWED_INSTALLATION_ENGINE_CHANNELS: ReadonlySet<string> = new Set(
+  Object.values(INSTALLATION_ENGINE_CHANNELS),
+);
 
 let mainWindow: BrowserWindow | null = null;
 let updateService: UpdateService | null = null;
 let authService: AuthService | null = null;
 let cloudSyncService: CloudSyncService | null = null;
+let installationEngineService: InstallationEngineService | null = null;
 let pendingAuthDeepLink = getAuthDeepLinkFromArguments(process.argv);
 
 const getProductionRendererPath = (): string =>
@@ -210,6 +221,14 @@ const isSyncEventInput = (value: unknown): value is SyncEventInput => {
   if (JSON.stringify(value.metadata).length > 2048) return false;
   return Object.values(value.metadata).every((item) => item === null || ['string', 'number', 'boolean'].includes(typeof item));
 };
+const isSafeEngineId = (value: unknown): value is string =>
+  typeof value === 'string' && value.length >= 1 && value.length <= 120 && /^[a-zA-Z0-9_-]+$/u.test(value);
+const isInstallationTarget = (value: unknown): value is InstallationTarget =>
+  isRecord(value) && hasExactKeys(value, ['gameDetectionId', 'packageInputId']) &&
+  isSafeEngineId(value.gameDetectionId) && isSafeEngineId(value.packageInputId);
+const isUninstallTarget = (value: unknown): value is UninstallTarget =>
+  isRecord(value) && hasExactKeys(value, ['gameDetectionId', 'modId']) &&
+  isSafeEngineId(value.gameDetectionId) && isModIdInput(value.modId);
 
 const assertTrustedIpcSender = (
   event: IpcMainInvokeEvent,
@@ -441,10 +460,40 @@ const registerCloudSyncHandlers = (
   });
 };
 
+const registerInstallationEngineHandlers = (
+  window: BrowserWindow,
+  trustedRendererUrl: URL,
+  service: InstallationEngineService,
+): void => {
+  const registerHandler = (
+    channel: InstallationEngineInvokeChannel,
+    expectedArgumentCount: number,
+    action: (...args: readonly unknown[]) => unknown,
+  ): void => {
+    ipcMain.removeHandler(channel);
+    ipcMain.handle(channel, (event, ...args: unknown[]) => {
+      if (!ALLOWED_INSTALLATION_ENGINE_CHANNELS.has(channel)) throw new Error('Rejected installation-engine channel.');
+      assertTrustedIpcSender(event, window, trustedRendererUrl);
+      if (args.length !== expectedArgumentCount) throw new Error('Rejected installation-engine arguments.');
+      return action(...args);
+    });
+  };
+  registerHandler(INSTALLATION_ENGINE_CHANNELS.getState, 0, () => service.getState());
+  registerHandler(INSTALLATION_ENGINE_CHANNELS.install, 1, (input) => {
+    if (!isInstallationTarget(input)) throw new TypeError('Rejected installation request.');
+    return service.install(input);
+  });
+  registerHandler(INSTALLATION_ENGINE_CHANNELS.uninstall, 1, (input) => {
+    if (!isUninstallTarget(input)) throw new TypeError('Rejected uninstall request.');
+    return service.uninstall(input);
+  });
+};
+
 const createMainWindow = async (
   service: UpdateService,
   authentication: AuthService,
   cloudSync: CloudSyncService,
+  installationEngine: InstallationEngineService,
 ): Promise<BrowserWindow> => {
   const devServerUrl = getDevServerUrl();
   const trustedRendererUrl = getTrustedRendererUrl(devServerUrl);
@@ -475,6 +524,7 @@ const createMainWindow = async (
   registerUpdaterHandlers(window, trustedRendererUrl, service);
   registerAuthHandlers(window, trustedRendererUrl, authentication);
   registerCloudSyncHandlers(window, trustedRendererUrl, cloudSync);
+  registerInstallationEngineHandlers(window, trustedRendererUrl, installationEngine);
 
   window.once('ready-to-show', () => {
     window.show();
@@ -569,18 +619,19 @@ if (!hasSingleInstanceLock) {
         mainWindow.webContents.send(CLOUD_SYNC_CHANNELS.stateChanged, state);
       }
     });
+    installationEngineService = new InstallationEngineService(join(app.getPath('userData'), 'installation-engine'));
     await authService.restoreSession();
     if (pendingAuthDeepLink) {
       const deepLink = pendingAuthDeepLink;
       pendingAuthDeepLink = null;
       await authService.handleDeepLink(deepLink);
     }
-    mainWindow = await createMainWindow(updateService, authService, cloudSyncService);
+    mainWindow = await createMainWindow(updateService, authService, cloudSyncService, installationEngineService);
     updateService.scheduleAutomaticCheck();
 
     app.on('activate', () => {
-      if (!mainWindow && updateService && authService && cloudSyncService) {
-        void createMainWindow(updateService, authService, cloudSyncService).then((window) => {
+      if (!mainWindow && updateService && authService && cloudSyncService && installationEngineService) {
+        void createMainWindow(updateService, authService, cloudSyncService, installationEngineService).then((window) => {
           mainWindow = window;
         });
       }
