@@ -28,6 +28,7 @@ export type UpdateErrorCode =
   | 'networkUnavailable'
   | 'checkFailed'
   | 'downloadFailed'
+  | 'updateRejected'
   | 'installNotReady';
 
 export interface UpdateProgress {

@@ -1,9 +1,35 @@
 # Lyor V1.2 Baseline and Architecture Contract
 
 Status: normative V1.2 milestone memory  
-Current milestone: Milestone 8 — Planaria Billboard Management
+Current milestone: Milestone 9 — GitHub Releases / Auto Updater
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
+
+## Milestone 9 release and updater contract
+
+Milestone 9 completes the version/tag/build/package/release policy for the V1.2
+patch line. `package.json` is the version source; tag `v<version>`, installer,
+blockmap, `latest.yml`, packaged `app-update.yml`, and generated SHA-256 manifest
+must agree. `npm run dist:win` is local/non-publishing and
+`npm run publish:win` is the only explicit publishing script.
+
+CI runs lint, typecheck, unit/integration tests, security scan, build, and local
+Supabase security tests. The tag workflow has read-only permissions during
+validation and grants `contents: write` only to the protected `production`
+publish job. Production publishing refuses to run without trusted Windows
+signing secrets. The artifact verifier rejects mixed versions or a wrong GitHub
+updater target and writes `release/artifact-sha256.json`.
+
+Updater remains main-process-only, checks once per packaged session when
+enabled, never auto-downloads, never auto-installs on ordinary app quit, and
+uses `quitAndInstall()` only after explicit user action. Version policy rejects
+same-version, downgrade, prerelease, invalid metadata, and integrity/signature
+errors. Overlay supports found/downloading/downloaded/error, Retry, Later, and
+Restart & Install while retaining reduced-motion/theme behavior.
+
+Actual old-build -> new GitHub Release updating and Authenticode trust cannot be
+verified without a second version, published artifacts, credentials, and
+signing certificate; they remain Milestone 10 production blockers.
 
 ## Milestone 8 billboard management contract
 

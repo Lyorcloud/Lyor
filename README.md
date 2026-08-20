@@ -44,6 +44,11 @@ and Home/preview carousel parity. Local preview mode is functional and clearly
 labelled; production billboard storage still requires the Milestone 7 external
 backend deployment.
 
+Milestone 9 adds PR/push validation, a protected signed tag-release workflow,
+strict same-version/downgrade/integrity updater policy, explicit Later/Retry
+states, and `npm run verify:release` for installer/blockmap/metadata SHA-256
+consistency. The app never auto-installs merely because it exits.
+
 The V1.2 milestone and architecture contract is in
 [`docs/LYOR_V1_2_BASELINE.md`](docs/LYOR_V1_2_BASELINE.md). The implemented
 foundation scope remains in [`docs/LYOR_V1_SPEC.md`](docs/LYOR_V1_SPEC.md), and

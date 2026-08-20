@@ -31,8 +31,12 @@ Use Node.js 22.12.0 or newer, install from the lockfile, and run the checks:
 npm ci
 npm run lint
 npm run typecheck
+npm test
+npm run test:supabase
+npm run security:scan
 npm run build:prod
 npm run dist:win
+npm run verify:release
 ```
 
 `npm run dist:win` remains the canonical unsigned local Windows packaging
@@ -45,6 +49,7 @@ With those values configured, it emits these three matching files in
 - `Lyor-Setup-<version>-x64.exe`
 - `Lyor-Setup-<version>-x64.exe.blockmap`
 - `latest.yml`
+- `artifact-sha256.json` (local integrity manifest)
 
 The packaged application also contains
 `release/win-unpacked/resources/app-update.yml`. The three public artifacts and
@@ -80,10 +85,11 @@ git tag v1.2.1
 git push origin HEAD --tags
 ```
 
-The workflow uses the built-in `GITHUB_TOKEN` with `contents: write`. Before a
-public release, configure `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD` as GitHub
-Actions secrets if code signing is available. End-user installations never
-receive or require a GitHub token.
+The workflow validates with `contents: read`; only the protected `production`
+job receives built-in `GITHUB_TOKEN` `contents: write`. Configure required
+reviewers and `WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD` secrets on that
+environment. The publish job fails closed when trusted signing is absent.
+End-user installations never receive or require a GitHub token.
 
 Upload/publish all three generated artifacts together. Do not mix an installer
 or blockmap from one version with another version's `latest.yml`.
@@ -99,6 +105,12 @@ or blockmap from one version with another version's `latest.yml`.
    progress.
 7. Choose **Restart and install**, then verify the reopened application is
    `1.2.1` and the previously recorded user data is unchanged.
+
+This test cannot be replaced by testing `1.2.0` against another build also
+labelled `1.2.0`. Same-version, downgrade, prerelease, invalid metadata, and
+checksum/signature failures must remain rejected. Closing the app after choosing
+**Later** must not install the update; only **Restart and install** may call the
+main-process installer.
 
 ## Troubleshooting
 

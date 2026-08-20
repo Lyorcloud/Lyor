@@ -143,6 +143,14 @@ feed contract recorded in the baseline. Local preview state must be labelled as
 such and cannot be reported as deployed production storage. GitHub release and
 updater pipeline changes remain gated to Milestone 9.
 
+### V1.2 Milestone 9 narrow supersession
+
+Milestone 9 authorizes the GitHub CI/tag/release pipeline and updater hardening
+recorded in the baseline. Publishing is still conditional on the Milestone 10
+production gate, trusted Windows signing, clean version/tag state, credentials,
+and real old-build update verification. A local unsigned installer is evidence
+for packaging only, never permission to publish.
+
 V1 is intended to support regular mods and third-party trainer packages prepared by an administrator. This does not authorize a community upload flow or a native Lyor trainer.
 
 The current implementation must not access GTA V or RPF files. Milestone 4's real generic-file core may operate only on main-approved paths; tests use isolated fixtures and no production game is auto-registered yet. Visible Install and Uninstall UI state continues through the isolated mock service until verified catalog/package inputs are authorized. Game discovery UI also remains explicitly mock-only; do not disguise it as verified detection. The application updater is an explicit exception: it is real infrastructure implemented with `electron-updater` in the main process and is not part of the mod engine.

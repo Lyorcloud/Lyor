@@ -10,72 +10,39 @@ import {
 
 import type {
   UpdateError,
-  UpdateErrorCode,
   UpdateProgress,
   UpdateState,
 } from '../shared/updater';
 import { UpdatePreferences } from './update-preferences';
+import {
+  classifyUpdateError,
+  isStrictVersionUpgrade,
+  normalizeUpdateVersion,
+  sanitizeUpdateLogMessage,
+  type UpdateAction,
+} from './update-policy';
 
 const AUTOMATIC_CHECK_DELAY_MS = 7_000;
-const MAX_LOG_MESSAGE_LENGTH = 1_000;
 const MAX_RELEASE_NOTES_INPUT_LENGTH = 4_000;
 const MAX_RELEASE_NOTES_LENGTH = 600;
-
-type UpdateAction = 'check' | 'download';
 
 interface UpdateServiceOptions {
   readonly emitState: (state: UpdateState) => void;
 }
 
-const sanitizeLogMessage = (message: unknown): string => {
-  if (message instanceof Error) {
-    return sanitizeLogMessage(`${message.name}: ${message.message}`);
-  }
-
-  if (typeof message !== 'string') {
-    return '[updater details omitted]';
-  }
-
-  return message
-    .replace(/https?:\/\/\S+/giu, '[update-url]')
-    .replace(
-      /\b[a-z]:\\(?:[^\\/:*?"<>|'\r\n]+\\)*[^\\/:*?"<>|'\r\n]*/giu,
-      '[local-path]',
-    )
-    .replace(/\\\\[^\\\s'"]+\\[^'"\r\n]*/gu, '[local-path]')
-    .replace(/\b\/(?:users|home|tmp|var)\/[^\s'"]+/giu, '[local-path]')
-    .replace(
-      /\b(authorization|cookie|password|secret|token)\s*[:=]\s*\S+/giu,
-      '$1=[redacted]',
-    )
-    .replace(/\b(?:ghp|github_pat)_[a-z0-9_]+\b/giu, '[redacted-token]')
-    .slice(0, MAX_LOG_MESSAGE_LENGTH);
-};
-
 const updateLogger = {
   info: (message?: unknown): void => {
-    log.info(`[updater] ${sanitizeLogMessage(message)}`);
+    log.info(`[updater] ${sanitizeUpdateLogMessage(message)}`);
   },
   warn: (message?: unknown): void => {
-    log.warn(`[updater] ${sanitizeLogMessage(message)}`);
+    log.warn(`[updater] ${sanitizeUpdateLogMessage(message)}`);
   },
   error: (message?: unknown): void => {
-    log.error(`[updater] ${sanitizeLogMessage(message)}`);
+    log.error(`[updater] ${sanitizeUpdateLogMessage(message)}`);
   },
   debug: (message: string): void => {
-    log.debug(`[updater] ${sanitizeLogMessage(message)}`);
+    log.debug(`[updater] ${sanitizeUpdateLogMessage(message)}`);
   },
-};
-
-const normalizeVersion = (version: unknown): string | null => {
-  if (typeof version !== 'string') {
-    return null;
-  }
-
-  const normalized = version.trim();
-  return /^[0-9a-z][0-9a-z.+-]{0,63}$/iu.test(normalized)
-    ? normalized
-    : null;
 };
 
 const normalizeDate = (date: unknown): string | null => {
@@ -136,56 +103,6 @@ const normalizeProgress = (progress: ProgressInfo): UpdateProgress => ({
   bytesPerSecond: normalizeByteValue(progress.bytesPerSecond),
 });
 
-const classifyError = (
-  error: unknown,
-  action: UpdateAction,
-): UpdateError => {
-  const rawMessage =
-    error instanceof Error
-      ? error.message
-      : typeof error === 'string'
-        ? error
-        : '';
-  const normalized = rawMessage.toLowerCase();
-
-  if (
-    normalized.includes('app-update.yml') ||
-    normalized.includes('update config') ||
-    normalized.includes('no published versions')
-  ) {
-    return {
-      code: 'updateConfigurationMissing',
-      message: 'Updates are not configured for this build.',
-    };
-  }
-
-  if (
-    normalized.includes('enotfound') ||
-    normalized.includes('econnrefused') ||
-    normalized.includes('econnreset') ||
-    normalized.includes('etimedout') ||
-    normalized.includes('net::') ||
-    normalized.includes('network') ||
-    normalized.includes('timeout')
-  ) {
-    return {
-      code: 'networkUnavailable',
-      message: 'The update service could not be reached. Try again later.',
-    };
-  }
-
-  const code: UpdateErrorCode =
-    action === 'download' ? 'downloadFailed' : 'checkFailed';
-
-  return {
-    code,
-    message:
-      action === 'download'
-        ? 'The update could not be downloaded. Try again later.'
-        : 'Updates could not be checked. Try again later.',
-  };
-};
-
 export class UpdateService {
   private state: UpdateState;
   private readonly preferences: UpdatePreferences;
@@ -202,7 +119,7 @@ export class UpdateService {
 
     this.state = {
       status: 'idle',
-      currentVersion: normalizeVersion(app.getVersion()) ?? '0.0.0',
+      currentVersion: normalizeUpdateVersion(app.getVersion()) ?? '0.0.0',
       availableVersion: null,
       progress: null,
       releaseDate: null,
@@ -221,7 +138,7 @@ export class UpdateService {
     }
 
     autoUpdater.autoDownload = false;
-    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.autoInstallOnAppQuit = false;
     autoUpdater.logger = updateLogger;
     this.registerUpdaterEvents();
     updateLogger.info('Updater initialized for packaged build.');
@@ -392,10 +309,10 @@ export class UpdateService {
       }
     } catch (error: unknown) {
       if (this.state.status !== 'error') {
-        this.setError(classifyError(error, 'check'), true);
+        this.setError(classifyUpdateError(error, 'check'), true);
       }
       updateLogger.error(
-        `Update check failed (${classifyError(error, 'check').code}).`,
+        `Update check failed (${classifyUpdateError(error, 'check').code}).`,
       );
     }
 
@@ -409,10 +326,10 @@ export class UpdateService {
       await autoUpdater.downloadUpdate();
     } catch (error: unknown) {
       if (this.state.status !== 'error') {
-        this.setError(classifyError(error, 'download'));
+        this.setError(classifyUpdateError(error, 'download'));
       }
       updateLogger.error(
-        `Update download failed (${classifyError(error, 'download').code}).`,
+        `Update download failed (${classifyUpdateError(error, 'download').code}).`,
       );
     }
 
@@ -456,7 +373,7 @@ export class UpdateService {
     autoUpdater.on('error', (error) => {
       const action: UpdateAction =
         this.state.status === 'downloading' ? 'download' : 'check';
-      const safeError = classifyError(error, action);
+      const safeError = classifyUpdateError(error, action);
       this.setError(safeError, action === 'check');
       updateLogger.error(`Event: error (${safeError.code}).`);
     });
@@ -468,10 +385,19 @@ export class UpdateService {
     progress: UpdateProgress | null = null,
   ): void {
     const isAvailable = status !== 'upToDate';
+    const normalizedAvailableVersion = normalizeUpdateVersion(info?.version);
+    if (isAvailable && (!normalizedAvailableVersion || !isStrictVersionUpgrade(this.state.currentVersion, normalizedAvailableVersion))) {
+      if (status === 'downloaded') {
+        this.setError({ code: 'updateRejected', message: 'The downloaded update did not pass version policy checks.' });
+      } else {
+        this.patchState({ status: 'upToDate', availableVersion: null, progress: null, error: null, lastCheckedAt: new Date().toISOString() });
+      }
+      return;
+    }
     this.patchState({
       status,
       availableVersion: isAvailable
-        ? normalizeVersion(info?.version) ?? this.state.availableVersion
+        ? normalizedAvailableVersion ?? this.state.availableVersion
         : null,
       releaseDate: isAvailable
         ? normalizeDate(info?.releaseDate) ?? this.state.releaseDate

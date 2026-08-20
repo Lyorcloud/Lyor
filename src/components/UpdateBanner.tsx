@@ -145,13 +145,18 @@ export function UpdateOverlay() {
         ) : null}
         <div className="update-overlay__actions">
           {isDownloaded ? (
-            <button className="update-overlay__primary" onClick={() => void updater.restartAndInstall()} type="button">
-              {t('updates.restartAndInstall')}
-            </button>
+            <>
+              <button className="update-overlay__primary" onClick={() => void updater.restartAndInstall()} type="button">
+                {t('updates.restartAndInstall')}
+              </button>
+              <button className="update-overlay__secondary" onClick={dismiss} type="button">
+                {t('updates.later')}
+              </button>
+            </>
           ) : isDownloading ? null : hasError ? (
             <>
               <button className="update-overlay__primary" onClick={() => void updater.checkForUpdates()} type="button">
-                {t('updates.check')}
+                {t('updates.retry')}
               </button>
               <button className="update-overlay__secondary" onClick={dismiss} type="button">
                 {t('updates.later')}

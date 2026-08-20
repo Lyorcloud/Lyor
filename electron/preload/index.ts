@@ -120,6 +120,7 @@ const UPDATE_ERROR_CODES: ReadonlySet<string> = new Set<UpdateErrorCode>([
   'networkUnavailable',
   'checkFailed',
   'downloadFailed',
+  'updateRejected',
   'installNotReady',
 ]);
 
