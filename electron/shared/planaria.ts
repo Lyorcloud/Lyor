@@ -4,7 +4,8 @@ export const PLANARIA_CHANNELS = {
   selectFile: 'planaria:select-file',
   selectTargetPath: 'planaria:select-target-path',
   saveDraft: 'planaria:save-draft',
-  uploadPackage: 'planaria:upload-package',
+  selectModContent: 'planaria:select-mod-content',
+  uploadModContent: 'planaria:upload-mod-content',
   uploadModMedia: 'planaria:upload-mod-media',
   uploadBillboard: 'planaria:upload-billboard',
   transitionVersion: 'planaria:transition-version',
@@ -15,7 +16,8 @@ export const PLANARIA_CHANNELS = {
 
 export type PlanariaInvokeChannel = (typeof PLANARIA_CHANNELS)[keyof Omit<typeof PLANARIA_CHANNELS, 'uploadProgress'>];
 export type PlanariaPublishState = 'draft' | 'ready' | 'published' | 'disabled';
-export type PlanariaFilePurpose = 'mod-package' | 'mod-image' | 'billboard';
+export type PlanariaFilePurpose = 'mod-content' | 'mod-image' | 'billboard';
+export type PlanariaContentSelectionKind = 'file' | 'folder';
 
 export interface PlanariaAccess { readonly role: 'admin' | 'super_admin'; readonly canManageAdmins: boolean }
 export interface PlanariaStats {
@@ -73,6 +75,10 @@ export interface PlanariaFileSelection {
   readonly id: string; readonly purpose: PlanariaFilePurpose; readonly name: string;
   readonly mimeType: string; readonly size: number; readonly sha256: string;
 }
+export interface PlanariaContentSelection {
+  readonly id: string; readonly purpose: 'mod-content'; readonly kind: PlanariaContentSelectionKind;
+  readonly name: string; readonly fileCount: number; readonly size: number; readonly sha256: string;
+}
 export interface PlanariaTargetPathSelection { readonly relativePath: string }
 export interface PlanariaSaveDraftInput {
   readonly modId: string; readonly name: string; readonly summary: string; readonly gameId: string;
@@ -84,7 +90,7 @@ export interface PlanariaSaveDraftInput {
 export interface PlanariaSaveDraftResult {
   readonly versionId: string; readonly modUpdatedAt: string; readonly versionUpdatedAt: string;
 }
-export interface PlanariaPackageUploadInput {
+export interface PlanariaContentUploadInput {
   readonly selectionId: string; readonly versionId: string; readonly modId: string; readonly version: string;
 }
 export interface PlanariaModMediaUploadInput { readonly selectionId: string; readonly modId: string }
@@ -107,9 +113,10 @@ export interface LyorPlanariaApi {
   readonly getDashboard: () => Promise<PlanariaDashboardSnapshot>;
   readonly getPublicBillboards: () => Promise<readonly PublicBillboardItem[]>;
   readonly selectFile: (purpose: PlanariaFilePurpose) => Promise<PlanariaFileSelection | null>;
+  readonly selectModContent: (kind: PlanariaContentSelectionKind) => Promise<PlanariaContentSelection | null>;
   readonly selectTargetPath: () => Promise<PlanariaTargetPathSelection | null>;
   readonly saveDraft: (input: PlanariaSaveDraftInput) => Promise<PlanariaSaveDraftResult>;
-  readonly uploadPackage: (input: PlanariaPackageUploadInput) => Promise<void>;
+  readonly uploadModContent: (input: PlanariaContentUploadInput) => Promise<void>;
   readonly uploadModMedia: (input: PlanariaModMediaUploadInput) => Promise<void>;
   readonly uploadBillboard: (input: PlanariaBillboardUploadInput) => Promise<void>;
   readonly transitionVersion: (input: PlanariaTransitionInput) => Promise<void>;

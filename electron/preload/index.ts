@@ -38,7 +38,7 @@ import type {
   PlanariaFilePurpose,
   PlanariaFileSelection,
   PlanariaModMediaUploadInput,
-  PlanariaPackageUploadInput,
+  PlanariaContentUploadInput, PlanariaContentSelection,
   PlanariaSaveDraftInput,
   PlanariaSaveDraftResult,
   PlanariaTargetPathSelection,
@@ -111,7 +111,7 @@ const PRELOAD_INSTALLATION_ENGINE_CHANNELS = {
 const PRELOAD_PLANARIA_CHANNELS = {
   getDashboard: 'planaria:get-dashboard', getPublicBillboards: 'planaria:get-public-billboards',
     selectFile: 'planaria:select-file', selectTargetPath: 'planaria:select-target-path', saveDraft: 'planaria:save-draft',
-  uploadPackage: 'planaria:upload-package', uploadModMedia: 'planaria:upload-mod-media',
+  selectModContent: 'planaria:select-mod-content', uploadModContent: 'planaria:upload-mod-content', uploadModMedia: 'planaria:upload-mod-media',
   uploadBillboard: 'planaria:upload-billboard', transitionVersion: 'planaria:transition-version',
   mutateBillboard: 'planaria:mutate-billboard', createAdmin: 'planaria:create-admin',
   uploadProgress: 'planaria:upload-progress',
@@ -308,7 +308,7 @@ const isPublicBillboard = (value: unknown): value is PublicBillboardItem =>
   isSafeMediaUrl(value.src);
 const isPlanariaFileSelection = (value: unknown): value is PlanariaFileSelection =>
   isRecord(value) && typeof value.id === 'string' &&
-  ['mod-package', 'mod-image', 'billboard'].includes(String(value.purpose)) &&
+  ['mod-content', 'mod-image', 'billboard'].includes(String(value.purpose)) &&
   typeof value.name === 'string' && typeof value.mimeType === 'string' &&
   isNonNegativeFiniteNumber(value.size) && typeof value.sha256 === 'string' && /^[a-f0-9]{64}$/u.test(value.sha256) &&
   hasNoPrivilegedFields(value);
@@ -322,7 +322,7 @@ const isPlanariaSaveDraftResult = (value: unknown): value is PlanariaSaveDraftRe
   typeof value.versionUpdatedAt === 'string';
 const isPlanariaUploadProgress = (value: unknown): value is PlanariaUploadProgress =>
   isRecord(value) && typeof value.uploadId === 'string' &&
-  ['mod-package', 'mod-image', 'billboard'].includes(String(value.purpose)) &&
+  ['mod-content', 'mod-image', 'billboard'].includes(String(value.purpose)) &&
   ['preparing', 'uploading', 'finalizing', 'success', 'error'].includes(String(value.status)) &&
   isNonNegativeFiniteNumber(value.percent) && Number(value.percent) <= 100 &&
   isNonNegativeFiniteNumber(value.transferred) && isNonNegativeFiniteNumber(value.total) && isNullableString(value.error);
@@ -499,6 +499,15 @@ const lyorPlanaria: Readonly<LyorPlanariaApi> = Object.freeze({
     if (!isPlanariaFileSelection(result)) throw new TypeError('Invalid selected-file response.');
     return result;
   },
+  selectModContent: async (kind: 'file' | 'folder') => {
+    const result: unknown = await ipcRenderer.invoke(PRELOAD_PLANARIA_CHANNELS.selectModContent, kind);
+    if (result === null) return null;
+    if (!isRecord(result) || result.purpose !== 'mod-content' || !['file', 'folder'].includes(String(result.kind)) ||
+        typeof result.id !== 'string' || typeof result.name !== 'string' || !Number.isInteger(result.fileCount) ||
+        !isNonNegativeFiniteNumber(result.size) || typeof result.sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(result.sha256) ||
+        !hasNoPrivilegedFields(result)) throw new TypeError('Invalid mod-content selection.');
+    return result as unknown as PlanariaContentSelection;
+  },
   selectTargetPath: async () => {
     const result: unknown = await ipcRenderer.invoke(PRELOAD_PLANARIA_CHANNELS.selectTargetPath);
     if (result === null) return null;
@@ -510,7 +519,7 @@ const lyorPlanaria: Readonly<LyorPlanariaApi> = Object.freeze({
     if (!isPlanariaSaveDraftResult(result)) throw new TypeError('Invalid Planaria draft response.');
     return result;
   },
-  uploadPackage: (input: PlanariaPackageUploadInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.uploadPackage, input),
+  uploadModContent: (input: PlanariaContentUploadInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.uploadModContent, input),
   uploadModMedia: (input: PlanariaModMediaUploadInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.uploadModMedia, input),
   uploadBillboard: (input: PlanariaBillboardUploadInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.uploadBillboard, input),
   transitionVersion: (input: PlanariaTransitionInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.transitionVersion, input),

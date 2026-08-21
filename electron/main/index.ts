@@ -41,7 +41,7 @@ import {
   type PlanariaFilePurpose,
   type PlanariaInvokeChannel,
   type PlanariaModMediaUploadInput,
-  type PlanariaPackageUploadInput,
+  type PlanariaContentUploadInput,
   type PlanariaSaveDraftInput,
   type PlanariaTransitionInput,
 } from '../shared/planaria';
@@ -103,7 +103,7 @@ const ALLOWED_INSTALLATION_ENGINE_CHANNELS: ReadonlySet<string> = new Set(
 const ALLOWED_PLANARIA_CHANNELS: ReadonlySet<string> = new Set([
   PLANARIA_CHANNELS.getDashboard, PLANARIA_CHANNELS.getPublicBillboards,
   PLANARIA_CHANNELS.selectFile, PLANARIA_CHANNELS.selectTargetPath, PLANARIA_CHANNELS.saveDraft,
-  PLANARIA_CHANNELS.uploadPackage, PLANARIA_CHANNELS.uploadModMedia,
+  PLANARIA_CHANNELS.selectModContent, PLANARIA_CHANNELS.uploadModContent, PLANARIA_CHANNELS.uploadModMedia,
   PLANARIA_CHANNELS.uploadBillboard, PLANARIA_CHANNELS.transitionVersion,
   PLANARIA_CHANNELS.mutateBillboard, PLANARIA_CHANNELS.createAdmin,
 ]);
@@ -263,7 +263,7 @@ const isUninstallTarget = (value: unknown): value is UninstallTarget =>
 const isUuid = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/iu.test(value);
 const isPlanariaFilePurpose = (value: unknown): value is PlanariaFilePurpose =>
-  value === 'mod-package' || value === 'mod-image' || value === 'billboard';
+  value === 'mod-content' || value === 'mod-image' || value === 'billboard';
 const isPlanariaSaveDraftInput = (value: unknown): value is PlanariaSaveDraftInput =>
   isRecord(value) && hasExactKeys(value, [
     'modId', 'name', 'summary', 'gameId', 'versionId', 'version', 'gameEdition',
@@ -277,7 +277,7 @@ const isPlanariaSaveDraftInput = (value: unknown): value is PlanariaSaveDraftInp
   JSON.stringify(value.manifest).length <= 65536 &&
   (value.adapterId === 'generic-files' || value.adapterId === 'synthetic-container-fixture') &&
   (value.expectedUpdatedAt === null || isIsoDate(value.expectedUpdatedAt));
-const isPlanariaPackageUploadInput = (value: unknown): value is PlanariaPackageUploadInput =>
+const isPlanariaContentUploadInput = (value: unknown): value is PlanariaContentUploadInput =>
   isRecord(value) && hasExactKeys(value, ['selectionId', 'versionId', 'modId', 'version']) &&
   isUuid(value.selectionId) && isUuid(value.versionId) && isModIdInput(value.modId) &&
   isBoundedString(value.version, 80) && value.version.length >= 1;
@@ -614,14 +614,18 @@ const registerPlanariaHandlers = (
     if (!isPlanariaFilePurpose(purpose)) throw new TypeError('Rejected Planaria file purpose.');
     return service.selectFile(window, purpose);
   });
+  registerHandler(PLANARIA_CHANNELS.selectModContent, 1, (kind) => {
+    if (kind !== 'file' && kind !== 'folder') throw new TypeError('Rejected mod content kind.');
+    return service.selectModContent(window, kind);
+  });
   registerHandler(PLANARIA_CHANNELS.selectTargetPath, 0, () => service.selectTargetPath(window));
   registerHandler(PLANARIA_CHANNELS.saveDraft, 1, (input) => {
     if (!isPlanariaSaveDraftInput(input)) throw new TypeError('Rejected Planaria draft.');
     return service.saveDraft(input);
   });
-  registerHandler(PLANARIA_CHANNELS.uploadPackage, 1, (input) => {
-    if (!isPlanariaPackageUploadInput(input)) throw new TypeError('Rejected Planaria package upload.');
-    return service.uploadPackage(input);
+  registerHandler(PLANARIA_CHANNELS.uploadModContent, 1, (input) => {
+    if (!isPlanariaContentUploadInput(input)) throw new TypeError('Rejected Planaria content upload.');
+    return service.uploadModContent(input);
   });
   registerHandler(PLANARIA_CHANNELS.uploadModMedia, 1, (input) => {
     if (!isPlanariaModMediaUploadInput(input)) throw new TypeError('Rejected Planaria media upload.');

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, promises as fs } from 'node:fs';
-import { basename, dirname, extname, isAbsolute, relative } from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, relative } from 'node:path';
 
 import { BrowserWindow, dialog } from 'electron';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -12,8 +12,10 @@ import type {
   PlanariaDashboardSnapshot,
   PlanariaFilePurpose,
   PlanariaFileSelection,
+  PlanariaContentSelection,
+  PlanariaContentSelectionKind,
   PlanariaModMediaUploadInput,
-  PlanariaPackageUploadInput,
+  PlanariaContentUploadInput,
   PlanariaSaveDraftInput,
   PlanariaSaveDraftResult,
   PlanariaTransitionInput,
@@ -24,6 +26,8 @@ import type {
 import type { AuthService } from './auth-service';
 
 interface SelectedFile extends PlanariaFileSelection { readonly path: string }
+interface SelectedContentFile { readonly path: string; readonly relativePath: string; readonly size: number; readonly sha256: string; readonly mimeType: string }
+interface SelectedContent extends PlanariaContentSelection { readonly files: readonly SelectedContentFile[] }
 interface UploadedPart { readonly partNumber: number; readonly etag: string; readonly size: number }
 interface UploadJournalEntry {
   readonly key: string; readonly purpose: PlanariaFilePurpose; readonly target: string;
@@ -34,16 +38,15 @@ interface UploadJournalEntry {
 const PART_SIZE = 8 * 1024 * 1024;
 const MAX_SELECTIONS = 20;
 const MIME_BY_EXTENSION: Readonly<Record<string, string>> = {
-  '.zip': 'application/zip', '.7z': 'application/x-7z-compressed', '.rar': 'application/vnd.rar',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.mp4': 'video/mp4',
 };
 const PURPOSE_EXTENSIONS: Readonly<Record<PlanariaFilePurpose, readonly string[]>> = {
-  'mod-package': ['zip', '7z', 'rar'],
+  'mod-content': [],
   'mod-image': ['png', 'jpg', 'jpeg', 'webp'],
   billboard: ['png', 'jpg', 'jpeg', 'webp', 'mp4'],
 };
 const MAX_BYTES: Readonly<Record<PlanariaFilePurpose, number>> = {
-  'mod-package': 500 * 1024 * 1024 * 1024,
+  'mod-content': 500 * 1024 * 1024 * 1024,
   'mod-image': 20 * 1024 * 1024,
   billboard: 500 * 1024 * 1024,
 };
@@ -83,6 +86,7 @@ export class PlanariaService {
   readonly #journalPath: string;
   readonly #emitProgress: (progress: PlanariaUploadProgress) => void;
   readonly #selections = new Map<string, SelectedFile>();
+  readonly #contentSelections = new Map<string, SelectedContent>();
   readonly #activeUploads = new Set<string>();
   #journalLoaded = false;
   #journal = new Map<string, UploadJournalEntry>();
@@ -107,7 +111,7 @@ export class PlanariaService {
   async selectFile(window: BrowserWindow, purpose: PlanariaFilePurpose): Promise<PlanariaFileSelection | null> {
     const response = await dialog.showOpenDialog(window, {
       properties: ['openFile'],
-      filters: [{ name: purpose === 'mod-package' ? 'Mod packages' : 'Media', extensions: [...PURPOSE_EXTENSIONS[purpose]] }],
+      filters: [{ name: 'Media', extensions: [...PURPOSE_EXTENSIONS[purpose]] }],
     });
     const path = response.filePaths[0];
     if (response.canceled || !path) return null;
@@ -130,6 +134,45 @@ export class PlanariaService {
       id: selection.id, purpose: selection.purpose, name: selection.name,
       mimeType: selection.mimeType, size: selection.size, sha256: selection.sha256,
     };
+  }
+
+  async selectModContent(window: BrowserWindow, kind: PlanariaContentSelectionKind): Promise<PlanariaContentSelection | null> {
+    const response = await dialog.showOpenDialog(window, {
+      title: kind === 'file' ? 'Select a loose mod file' : 'Select a mod folder',
+      buttonLabel: kind === 'file' ? 'Select file' : 'Select folder',
+      properties: [kind === 'file' ? 'openFile' : 'openDirectory'],
+    });
+    const selectedPath = response.filePaths[0];
+    if (response.canceled || !selectedPath) return null;
+    const files: SelectedContentFile[] = [];
+    const root = kind === 'folder' ? selectedPath : dirname(selectedPath);
+    const visit = async (path: string): Promise<void> => {
+      const stat = await fs.lstat(path);
+      if (stat.isSymbolicLink()) throw new Error('Linked files and folders are not supported.');
+      if (stat.isDirectory()) {
+        const entries = await fs.readdir(path, { withFileTypes: true });
+        entries.sort((left, right) => left.name.localeCompare(right.name));
+        for (const entry of entries) await visit(join(path, entry.name));
+        return;
+      }
+      if (!stat.isFile() || stat.size <= 0) throw new Error('Only non-empty regular files can be uploaded.');
+      const relativePath = (kind === 'file' ? basename(path) : relative(root, path)).replaceAll('\\', '/');
+      if (!relativePath || relativePath.split('/').includes('..') || relativePath.length > 1024) throw new Error('The mod contains an unsafe path.');
+      const extension = extname(path).toLowerCase();
+      files.push({ path, relativePath, size: stat.size, sha256: await sha256File(path), mimeType: MIME_BY_EXTENSION[extension] ?? 'application/octet-stream' });
+      if (files.length > 10_000) throw new Error('The selected folder contains too many files.');
+    };
+    await visit(selectedPath);
+    if (files.length === 0) throw new Error('The selected folder is empty.');
+    const size = files.reduce((sum, file) => sum + file.size, 0);
+    if (size > MAX_BYTES['mod-content']) throw new Error('The selected content is too large.');
+    const digest = createHash('sha256');
+    for (const file of files) digest.update(`${file.relativePath}\0${file.size}\0${file.sha256}\n`);
+    const selection: SelectedContent = { id: randomUUID(), purpose: 'mod-content', kind, name: basename(selectedPath), fileCount: files.length, size, sha256: digest.digest('hex'), files };
+    this.#contentSelections.set(selection.id, selection);
+    while (this.#contentSelections.size > MAX_SELECTIONS) this.#contentSelections.delete(this.#contentSelections.keys().next().value as string);
+    return { id: selection.id, purpose: selection.purpose, kind: selection.kind, name: selection.name,
+      fileCount: selection.fileCount, size: selection.size, sha256: selection.sha256 };
   }
 
   async selectTargetPath(window: BrowserWindow): Promise<PlanariaTargetPathSelection | null> {
@@ -166,11 +209,23 @@ export class PlanariaService {
     return result as unknown as PlanariaSaveDraftResult;
   }
 
-  async uploadPackage(input: PlanariaPackageUploadInput): Promise<void> {
-    await this.#upload(input.selectionId, 'mod-package', `${input.versionId}:${input.modId}:${input.version}`,
-      'planaria-upload-session', {
-        versionId: input.versionId, modId: input.modId, version: input.version,
-      });
+  async uploadModContent(input: PlanariaContentUploadInput): Promise<void> {
+    const selection = this.#contentSelections.get(input.selectionId);
+    if (!selection || this.#activeUploads.has(input.selectionId)) throw new Error('Select the mod content again.');
+    this.#activeUploads.add(input.selectionId);
+    let completedBytes = 0;
+    try {
+      for (const file of selection.files) {
+        const selected: SelectedFile = { id: randomUUID(), purpose: 'mod-content', name: basename(file.path), mimeType: file.mimeType, size: file.size, sha256: file.sha256, path: file.path };
+        this.#selections.set(selected.id, selected);
+        await this.#upload(selected.id, 'mod-content', `${input.versionId}:${file.relativePath}`, 'planaria-upload-session', {
+          versionId: input.versionId, modId: input.modId, version: input.version, relativePath: file.relativePath,
+        }, { uploadId: input.selectionId, baseTransferred: completedBytes, aggregateTotal: selection.size });
+        completedBytes += file.size;
+      }
+      this.#contentSelections.delete(input.selectionId);
+      this.#emit(input.selectionId, 'mod-content', 'success', 100, selection.size, selection.size, null);
+    } finally { this.#activeUploads.delete(input.selectionId); }
   }
 
   async uploadModMedia(input: PlanariaModMediaUploadInput): Promise<void> {
@@ -223,11 +278,15 @@ export class PlanariaService {
     target: string,
     functionName: string,
     createContext: Record<string, unknown>,
+    aggregate?: { readonly uploadId: string; readonly baseTransferred: number; readonly aggregateTotal: number },
   ): Promise<void> {
     const selected = this.#selections.get(selectionId);
     if (!selected || selected.purpose !== purpose || this.#activeUploads.has(selectionId)) throw new Error('Select the file again.');
     this.#activeUploads.add(selectionId);
-    this.#emit(selectionId, purpose, 'preparing', 0, 0, selected.size, null);
+    const progressId = aggregate?.uploadId ?? selectionId;
+    const progressTotal = aggregate?.aggregateTotal ?? selected.size;
+    const baseTransferred = aggregate?.baseTransferred ?? 0;
+    this.#emit(progressId, purpose, 'preparing', baseTransferred / progressTotal * 100, baseTransferred, progressTotal, null);
     const key = `${purpose}:${target}:${selected.sha256}`;
     try {
       await this.#loadJournal();
@@ -282,13 +341,13 @@ export class PlanariaService {
           journal = { ...journal, parts: [...completed.values()].sort((left, right) => left.partNumber - right.partNumber) };
           this.#journal.set(key, journal);
           await this.#saveJournal();
-          this.#emit(selectionId, purpose, 'uploading', transferred / selected.size * 100, transferred, selected.size, null);
+          this.#emit(progressId, purpose, 'uploading', (baseTransferred + transferred) / progressTotal * 100, baseTransferred + transferred, progressTotal, null);
         }
       } finally {
         await file.close();
       }
 
-      this.#emit(selectionId, purpose, 'finalizing', 100, selected.size, selected.size, null);
+      this.#emit(progressId, purpose, 'finalizing', (baseTransferred + selected.size) / progressTotal * 100, baseTransferred + selected.size, progressTotal, null);
       await this.#invoke(functionName, {
         action: 'finalize', sessionId: journal.sessionId, parts: journal.parts,
         ...(purpose === 'billboard' ? { alt: target } : {}),
@@ -296,11 +355,11 @@ export class PlanariaService {
       this.#journal.delete(key);
       await this.#saveJournal();
       this.#selections.delete(selectionId);
-      this.#emit(selectionId, purpose, 'success', 100, selected.size, selected.size, null);
+      if (!aggregate) this.#emit(progressId, purpose, 'success', 100, selected.size, selected.size, null);
     } catch {
       const retainedBytes = this.#journal.get(key)?.parts.reduce((sum, part) => sum + part.size, 0) ?? 0;
-      this.#emit(selectionId, purpose, 'error', retainedBytes / selected.size * 100,
-        retainedBytes, selected.size, 'Upload failed. You can retry safely.');
+      this.#emit(progressId, purpose, 'error', (baseTransferred + retainedBytes) / progressTotal * 100,
+        baseTransferred + retainedBytes, progressTotal, 'Upload failed. You can retry safely.');
       throw new Error('Upload failed. You can retry safely.');
     } finally {
       this.#activeUploads.delete(selectionId);

@@ -30,7 +30,7 @@ describe('Planaria dashboard', () => {
   beforeEach(() => {
     const planaria: LyorPlanariaApi = {
       getDashboard: vi.fn().mockResolvedValue(snapshot), getPublicBillboards: vi.fn().mockResolvedValue([]),
-      selectFile: vi.fn().mockResolvedValue(null), saveDraft: vi.fn(), uploadPackage: vi.fn(),
+      selectFile: vi.fn().mockResolvedValue(null), selectModContent: vi.fn().mockResolvedValue(null), saveDraft: vi.fn(), uploadModContent: vi.fn(),
       selectTargetPath: vi.fn().mockResolvedValue({ relativePath: 'mods/update/content' }),
       uploadModMedia: vi.fn(), uploadBillboard: vi.fn(), transitionVersion: vi.fn(),
       mutateBillboard: vi.fn(), createAdmin: vi.fn(), onUploadProgress: vi.fn().mockReturnValue(() => undefined),

@@ -345,6 +345,13 @@ publish state, and the minimum additional catalog linkage authorized later.
 Object payload integrity must be verified against the committed/published
 digest before privileged local installation work can consume it.
 
+Planaria's canonical new mod-upload input is loose content, not an
+administrator-created archive: an admin selects either one regular file or one
+folder. Folder files are uploaded individually with safe relative paths and
+per-file SHA-256 values; absolute local paths never reach the renderer or
+cloud. Legacy archive metadata remains readable for compatibility, but new
+Planaria uploads must not require or silently create ZIP, 7Z, or RAR packages.
+
 ### 3.3 Lyor Local Installation Engine
 
 Future responsibility: device game paths, staging, cache, backups, journals,

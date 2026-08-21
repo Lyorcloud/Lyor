@@ -32,7 +32,7 @@ const snapshot = async (context: Awaited<ReturnType<typeof authenticate>>): Prom
     context.database.from('catalog_games').select('id,edition,display_name,enabled,updated_at').order('display_name'),
     context.database.from('catalog_mods').select('id,name,summary,game_id,publish_state,created_at,updated_at').order('updated_at', { ascending: false }),
     context.database.from('catalog_mod_versions').select('id,mod_id,version,game_edition,game_version_range,manifest_schema_version,manifest,adapter_id,publish_state,published_at,created_at,updated_at').order('updated_at', { ascending: false }),
-    context.database.from('mod_package_objects').select('version_id,byte_size,sha256,verified_at'),
+    context.database.from('mod_content_objects').select('version_id,byte_size,sha256,verified_at'),
     context.database.from('catalog_mod_media').select('id,mod_id,object_key,mime_type,byte_size,width,height,display_order,created_at').order('display_order'),
     context.database.from('billboards').select('id,media_type,object_key,mime_type,byte_size,width,height,duration_ms,alt_text,display_order,publish_state,revision,created_at,updated_at,published_at').order('display_order'),
     context.database.from('mod_metrics').select('mod_id,completed_downloads,completed_installs,favorites'),
@@ -88,9 +88,16 @@ const snapshot = async (context: Awaited<ReturnType<typeof authenticate>>): Prom
       manifest: item.manifest, adapterId: item.adapter_id, state: item.publish_state,
       publishedAt: item.published_at, createdAt: item.created_at, updatedAt: item.updated_at,
     })),
-    packages: rows(packagesResult.data).map((item) => ({
-      versionId: item.version_id, byteSize: item.byte_size, sha256: item.sha256,
-      verifiedAt: item.verified_at,
+    packages: [...rows(packagesResult.data).reduce((grouped, item) => {
+      const versionId = String(item.version_id);
+      const previous = grouped.get(versionId) ?? { versionId, byteSize: 0, hashes: [] as string[], verifiedAt: item.verified_at };
+      previous.byteSize += Number(item.byte_size ?? 0);
+      previous.hashes.push(String(item.sha256));
+      if (!item.verified_at) previous.verifiedAt = null;
+      grouped.set(versionId, previous);
+      return grouped;
+    }, new Map<string, { versionId: string; byteSize: number; hashes: string[]; verifiedAt: unknown }>()).values()].map((item) => ({
+      versionId: item.versionId, byteSize: item.byteSize, sha256: item.hashes.sort().join('').slice(0, 64), verifiedAt: item.verifiedAt,
     })),
     media,
     billboards,

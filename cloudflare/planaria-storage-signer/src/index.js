@@ -34,7 +34,7 @@ const readJson = async (request) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid');
   return value;
 };
-const validKey = (value) => typeof value === 'string' && value.length <= 512 && /^(packages|media|billboards)\/[a-z0-9/_-]+$/i.test(value);
+const validKey = (value) => typeof value === 'string' && value.length <= 512 && /^(content|packages|media|billboards)\/[a-z0-9/_-]+$/i.test(value);
 const dimensions = async (object) => {
   const bytes = new Uint8Array(await object.arrayBuffer());
   if (bytes.length >= 24 && bytes[0] === 0x89 && decoder.decode(bytes.slice(1, 4)) === 'PNG') {
@@ -69,7 +69,7 @@ export default {
       if (request.method !== 'POST' || !await authorized(request, env)) return json(401, { error: 'unauthorized' });
       const input = await readJson(request);
       if (url.pathname.endsWith('/multipart/create')) {
-        const prefix = url.pathname.startsWith('/billboards/') ? 'billboards' : url.pathname.startsWith('/media/') ? 'media' : 'packages';
+        const prefix = url.pathname.startsWith('/billboards/') ? 'billboards' : url.pathname.startsWith('/media/') ? 'media' : url.pathname.startsWith('/content/') ? 'content' : 'packages';
         if (!Number.isSafeInteger(input.expectedSize) || input.expectedSize <= 0 || !/^[a-f0-9]{64}$/i.test(String(input.expectedSha256)) || typeof input.mimeType !== 'string') return json(400, { error: 'invalid' });
         const key = `${prefix}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}`;
         const upload = await env.BUCKET.createMultipartUpload(key, { httpMetadata: { contentType: input.mimeType }, customMetadata: { expectedSha256: input.expectedSha256, expectedSize: String(input.expectedSize) } });

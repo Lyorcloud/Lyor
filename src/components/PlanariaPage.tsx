@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import type {
   PlanariaDashboardSnapshot,
   PlanariaFileSelection,
+  PlanariaContentSelection,
   PlanariaGame,
   PlanariaModVersion,
   PlanariaUploadProgress,
@@ -218,7 +219,7 @@ function ModUpload({ snapshot, progress, refresh }: SharedProps) {
   const [manifestText, setManifestText] = useState('{\n  "schemaVersion": 2,\n  "operations": []\n}');
   const [versionId, setVersionId] = useState<string | null>(null);
   const [versionUpdatedAt, setVersionUpdatedAt] = useState<string | null>(null);
-  const [packageFile, setPackageFile] = useState<PlanariaFileSelection | null>(null);
+  const [modContent, setModContent] = useState<PlanariaContentSelection | null>(null);
   const [imageFile, setImageFile] = useState<PlanariaFileSelection | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -241,13 +242,18 @@ function ModUpload({ snapshot, progress, refresh }: SharedProps) {
     catch { setError(t('planaria.requestFailed')); }
     finally { setPending(false); }
   };
-  const choose = async (purpose: 'mod-package' | 'mod-image') => {
+  const choose = async (purpose: 'mod-image') => {
     try {
       const selected = await window.lyorPlanaria.selectFile(purpose);
       if (selected) {
-        if (purpose === 'mod-package') setPackageFile(selected);
-        else setImageFile(selected);
+        setImageFile(selected);
       }
+    } catch { setError(t('planaria.requestFailed')); }
+  };
+  const chooseModContent = async (kind: 'file' | 'folder') => {
+    try {
+      const selected = await window.lyorPlanaria.selectModContent(kind);
+      if (selected) setModContent(selected);
     } catch { setError(t('planaria.requestFailed')); }
   };
   const chooseTargetPath = async () => {
@@ -273,10 +279,10 @@ function ModUpload({ snapshot, progress, refresh }: SharedProps) {
     setVersionId(result.versionId); setVersionUpdatedAt(result.versionUpdatedAt);
     setNotice(t('planaria.saved')); await refresh();
   });
-  const uploadPackage = () => run(async () => {
-    if (!packageFile || !versionId) throw new Error('missing');
-    await window.lyorPlanaria.uploadPackage({ selectionId: packageFile.id, versionId, modId, version });
-    setPackageFile(null); await refresh();
+  const uploadModContent = () => run(async () => {
+    if (!modContent || !versionId) throw new Error('missing');
+    await window.lyorPlanaria.uploadModContent({ selectionId: modContent.id, versionId, modId, version });
+    setModContent(null); await refresh();
   });
   const uploadImage = () => run(async () => {
     if (!imageFile || !versionId) throw new Error('missing');
@@ -319,9 +325,9 @@ function ModUpload({ snapshot, progress, refresh }: SharedProps) {
         <label className="planaria-field-wide">{t('planaria.manifest')}<textarea className="planaria-manifest-editor" onChange={(event) => setManifestText(event.target.value)} spellCheck={false} value={manifestText} /><small className={parsedManifest ? 'planaria-valid' : 'planaria-error'}>{parsedManifest ? t('planaria.manifestValid') : t('planaria.manifestInvalid')}</small></label>
       </div></details>
       <div className="planaria-file-grid">
-        <article><h3>{t('planaria.package')}</h3><button className="planaria-secondary-button" onClick={() => void choose('mod-package')} type="button">{packageFile?.name ?? t('planaria.selectPackage')}</button>{packageFile ? <dl><div><dt>{t('planaria.size')}</dt><dd>{formatBytes(packageFile.size)}</dd></div><div><dt>SHA-256</dt><dd className="planaria-hash">{packageFile.sha256}</dd></div></dl> : null}<button className="planaria-primary-button" disabled={pending || !packageFile || !versionId} onClick={() => void uploadPackage()} type="button">{t('planaria.uploadPackage')}</button></article>
+        <article><h3>{t('planaria.modContent')}</h3><div className="planaria-inline-actions"><button className="planaria-secondary-button" onClick={() => void chooseModContent('file')} type="button">{t('planaria.selectModFile')}</button><button className="planaria-secondary-button" onClick={() => void chooseModContent('folder')} type="button">{t('planaria.selectModFolder')}</button></div>{modContent ? <dl><div><dt>{t('planaria.selection')}</dt><dd>{modContent.name}</dd></div><div><dt>{t('planaria.fileCount')}</dt><dd>{modContent.fileCount}</dd></div><div><dt>{t('planaria.size')}</dt><dd>{formatBytes(modContent.size)}</dd></div><div><dt>SHA-256</dt><dd className="planaria-hash">{modContent.sha256}</dd></div></dl> : null}<button className="planaria-primary-button" disabled={pending || !modContent || !versionId} onClick={() => void uploadModContent()} type="button">{t('planaria.uploadModContent')}</button></article>
       </div>
-      {progress && (progress.purpose === 'mod-package' || progress.purpose === 'mod-image') ? <div className="planaria-progress" aria-live="polite"><progress max={100} value={progress.percent} /><span>{Math.round(progress.percent)}% · {t(uploadStatusKeys[progress.status])}</span></div> : null}
+      {progress && (progress.purpose === 'mod-content' || progress.purpose === 'mod-image') ? <div className="planaria-progress" aria-live="polite"><progress max={100} value={progress.percent} /><span>{Math.round(progress.percent)}% · {t(uploadStatusKeys[progress.status])}</span></div> : null}
       {error ? <p className="planaria-error" role="alert">{error}</p> : null}{notice ? <p className="planaria-success" role="status">{notice}</p> : null}
       <div className="planaria-footer-actions"><button className="planaria-primary-button" disabled={pending || !parsedManifest || !modId || !name || !gameId || !targetPathValid} onClick={() => void save()} type="button">{t('planaria.saveDraft')}</button>{currentVersion?.state === 'draft' ? <button disabled={pending} onClick={() => void transition('ready')} type="button">{t('planaria.markReady')}</button> : null}{currentVersion?.state === 'ready' ? <button disabled={pending} onClick={() => void transition('publish')} type="button">{t('planaria.publish')}</button> : null}</div>
     </section>
