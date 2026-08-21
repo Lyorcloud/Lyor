@@ -145,7 +145,7 @@ jobs:
         run: npm run verify:release
       - uses: actions/upload-artifact@v6
         with:
-          name: Lyor-Setup-V1.2-${{ github.ref_name }}
+          name: Lyor-Setup-V1.2-${{ github.run_id }}
           if-no-files-found: error
           path: |
             release/Lyor-Setup-*.exe
