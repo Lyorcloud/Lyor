@@ -10,11 +10,13 @@ import { UpdateOverlay } from './components/UpdateBanner';
 import { WindowShell } from './components/WindowShell';
 import { AuthPanel } from './components/AuthPanel';
 import { PlanariaPage } from './components/PlanariaPage';
+import { PlanariaAuthPanel } from './components/PlanariaAuthPanel';
 import { mockMods } from './data/mockMods';
-import { mockHomeBillboards } from './data/mockBillboards';
+import type { HomeBillboardItem } from './data/mockBillboards';
 import { mockSidebarGames } from './data/mockGames';
 import { useMockInstallPhases, useMockModState } from './hooks/useMockModState';
 import { useAuth } from './hooks/useAuth';
+import { usePlanariaAuth } from './hooks/usePlanariaAuth';
 import { useCloudSync } from './hooks/useCloudSync';
 import { useI18n } from './i18n/I18nContext';
 import { searchMockMods } from './services/mockModService';
@@ -40,8 +42,10 @@ export default function App() {
   const mockState = useMockModState();
   const installPhases = useMockInstallPhases();
   const auth = useAuth();
+  const planariaAuth = usePlanariaAuth();
   const cloudSync = useCloudSync(auth.state.status);
   const [authOpen, setAuthOpen] = useState(false);
+  const [planariaAuthOpen, setPlanariaAuthOpen] = useState(false);
   const closeAuth = useCallback(() => setAuthOpen(false), []);
   const [route, setRoute] = useState<AppRoute>(routeFromHash);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -50,7 +54,7 @@ export default function App() {
   const [homeSort, setHomeSort] = useState<HomeSortId>('recommended');
   const [librarySort, setLibrarySort] = useState<LibrarySortId>('recently-installed');
   const [favoritesSort, setFavoritesSort] = useState<FavoritesSortId>('recently-added');
-  const [billboards, setBillboards] = useState(mockHomeBillboards);
+  const [billboards, setBillboards] = useState<readonly HomeBillboardItem[]>([]);
   const contentScrollRef = useRef<HTMLElement>(null);
   const routeRef = useRef<AppRoute>(route);
   const scrollPositionsRef = useRef<Map<AppRoute, number>>(new Map());
@@ -89,12 +93,21 @@ export default function App() {
     scroller.scrollTop = scrollPositionsRef.current.get(route) ?? 0;
   }, [route]);
 
-  const planariaAvailable = auth.state.status === 'authenticated' &&
-    (auth.state.user?.role === 'admin' || auth.state.user?.role === 'super_admin');
+  const planariaAvailable = planariaAuth.state.status === 'authenticated' &&
+    (planariaAuth.state.user?.role === 'admin' || planariaAuth.state.user?.role === 'super_admin');
 
   useEffect(() => {
     if (route === 'planaria' && !planariaAvailable) navigateTo('home');
   }, [planariaAvailable, route]);
+
+  useEffect(() => {
+    if (route !== 'home' || !window.lyorPlanaria) return;
+    let active = true;
+    void window.lyorPlanaria.getPublicBillboards()
+      .then((items) => { if (active) setBillboards(items); })
+      .catch(() => { if (active) setBillboards([]); });
+    return () => { active = false; };
+  }, [route]);
 
   const visibleMods = useMemo(() => {
     if (route === 'library') {
@@ -161,12 +174,16 @@ export default function App() {
           isOpen={sidebarOpen}
           labels={{ home: t('nav.home'), library: t('nav.library'), mods: t('nav.mods') }}
           onNavigate={handleNavigate}
-          onProductSelect={(product) => handleNavigate(product === 'planaria' ? 'planaria' : 'home')}
+          onProductSelect={(product) => {
+            if (product === 'lyor') handleNavigate('home');
+            else if (planariaAvailable) handleNavigate('planaria');
+            else setPlanariaAuthOpen(true);
+          }}
           onToggle={() => setSidebarOpen((current) => !current)}
           primaryNavigationLabel={t('aria.primaryNavigation')}
           productSwitcherLabel={t('product.switcher')}
           productUnavailableLabel={t('product.unavailable')}
-          planariaAvailable={planariaAvailable}
+          planariaAvailable
         />
       )}
       sidebarOpen={sidebarOpen}
@@ -217,10 +234,19 @@ export default function App() {
           updatePassword={auth.updatePassword}
         />
       ) : null}
+      {planariaAuthOpen ? (
+        <PlanariaAuthPanel
+          login={planariaAuth.login}
+          onClose={() => setPlanariaAuthOpen(false)}
+          onSuccess={() => { setPlanariaAuthOpen(false); navigateTo('planaria'); }}
+          pending={planariaAuth.pending}
+          state={planariaAuth.state}
+        />
+      ) : null}
       <section className={`content-section content-section--${route}`}>
         <div className="route-content" key={route}>
           {route === 'home' ? <HomeBillboard fallbackLabel={t('billboard.fallback')} hidden={searchFocused} items={billboards} nextLabel={t('billboard.next')} previousLabel={t('billboard.previous')} /> : null}
-          {route === 'planaria' ? <PlanariaPage billboards={billboards} onBillboardsChange={setBillboards} /> : null}
+          {route === 'planaria' ? <PlanariaPage /> : null}
           {route !== 'planaria' ? (
           <>
           <div className="section-heading">

@@ -55,6 +55,15 @@ The packaged application also contains
 `release/win-unpacked/resources/app-update.yml`. The three public artifacts and
 the packaged metadata must come from the same build and version.
 
+The canonical `npm run dist:win` command always packages the ignored
+`build/runtime-config.production.json`; it fails closed instead of silently
+shipping a loopback/local Supabase endpoint. `build/runtime-config.local.json`
+is reserved for explicit development-only builder invocations. The protected
+GitHub `production` environment must provide `LYOR_SUPABASE_URL` and
+`LYOR_SUPABASE_PUBLISHABLE_KEY`; the workflow validates them and creates the
+ignored `build/runtime-config.production.json` immediately before packaging.
+Loopback, non-HTTPS, missing, or credential-bearing URLs fail closed.
+
 ## Publish to GitHub Releases
 
 Set a publish token in the current process or CI secret store; do not commit a
@@ -88,8 +97,23 @@ git push origin HEAD --tags
 The workflow validates with `contents: read`; only the protected `production`
 job receives built-in `GITHUB_TOKEN` `contents: write`. Configure required
 reviewers and `WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD` secrets on that
-environment. The publish job fails closed when trusted signing is absent.
+environment. Also configure `LYOR_SUPABASE_URL` and
+`LYOR_SUPABASE_PUBLISHABLE_KEY` on the same environment. The publish job fails
+closed when trusted signing or production runtime configuration is absent, and
+verifies both the installed executable and Setup Authenticode signatures after
+packaging.
 End-user installations never receive or require a GitHub token.
+
+### Explicit unsigned test releases
+
+For the temporary friends-and-family updater pilot only, Actions may be run
+manually from the release commit with `unsigned_test_release` enabled.
+That explicit manual input bypasses only Authenticode signing for that one run;
+automatic tag-triggered releases still fail closed without trusted signing.
+The release stays public and non-draft so installed test builds can discover
+it, but its title and notes identify it as an unsigned test build. Windows may
+show Unknown publisher or SmartScreen warnings. This path is never a signed or
+production-ready release.
 
 Upload/publish all three generated artifacts together. Do not mix an installer
 or blockmap from one version with another version's `latest.yml`.

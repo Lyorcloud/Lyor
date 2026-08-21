@@ -5,6 +5,7 @@ node_modules/
 dist/
 dist-electron/
 release/
+artifacts/
 .vite/
 *.tsbuildinfo
 
@@ -13,6 +14,8 @@ release/
 .env.*
 !.env.example
 *.log
+build/runtime-config.local.json
+build/runtime-config.production.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

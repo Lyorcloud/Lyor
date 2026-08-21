@@ -5,6 +5,36 @@ Current milestone: Milestone 10 — audited local release candidate; production 
 Application version: `1.2.0`  
 Release family: **Lyor Setup V1.2**
 
+## Post-audit Planaria administration implementation
+
+An explicit user request after the Milestone 10 audit replaces Planaria's
+placeholder/local-preview renderer with a real protected dashboard and its
+version-controlled backend boundary. Overview/audit, catalog/version lifecycle,
+mod package and image upload, billboard lifecycle, authorized admin-account
+creation, and updater status are now connected through narrow typed IPC to the
+main-process Supabase client. The main process owns native file selection,
+SHA-256 calculation, bounded multipart upload, retry, and the persistent resume
+journal. File paths, provider object keys, presigned part URLs, sessions, and
+credentials never cross preload.
+
+All content mutations are authenticated Edge actions backed by service-only
+SQL functions. Desktop `authenticated` access has no direct catalog or
+billboard write grants. Admin authorization comes only from
+`app_private.user_roles` and `app_private.admin_permissions`; user metadata is
+not an authorization source. Admin creation uses server-side Auth Admin APIs
+and assigns only `admin`. The first `super_admin` can be created exactly once
+through the backend-only bootstrap token plus an advisory-locked zero-admin
+database gate. Package/image/video bytes live in provider-neutral object
+storage; Postgres stores verified metadata only. Home consumes only Published
+billboard rows through a deliberately public read function with short-lived
+signed media URLs.
+
+This implementation does not change the production gate below. Production
+Supabase/function deployment, storage signer/R2, custom SMTP, trusted Windows
+signing, clean target-machine evidence, and a real old-build-to-new-release
+updater test remain required. No deploy, tag, push, publish, or production
+storage mutation is implied by local verification.
+
 ## Milestone 10 audit and production gate
 
 Milestone 10 adds no product capability. The integrated Milestone 0–9 source,
@@ -20,6 +50,12 @@ Production remains blocked until trusted Authenticode signing, clean Windows 10
 and recovery checks, an authorized real game/mod adapter test, and a real
 published `1.2.0 -> 1.2.1` updater test all succeed. Fixture and local-emulator
 results must not be relabelled as production evidence.
+
+The explicitly authorized friends-and-family pilot may use public, unsigned
+`1.2.x` GitHub Releases solely to prove the updater end to end. Such releases
+must be manually triggered, visibly labelled unsigned test builds, and remain
+outside the production gate. Normal tag-triggered publishing still requires
+trusted Authenticode signing.
 
 ## Milestone 9 release and updater contract
 

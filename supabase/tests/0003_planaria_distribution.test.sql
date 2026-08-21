@@ -40,7 +40,7 @@ select throws_ok($$select public.planaria_authorize_admin('70000000-0000-0000-00
 
 set local request.jwt.claim.sub = '70000000-0000-0000-0000-000000000002';
 select is((select count(*)::integer from public.catalog_mods), 1, 'server-assigned admin sees draft content');
-select lives_ok($$update public.catalog_mods set summary = 'Admin update' where id = 'planaria-fixture'$$, 'admin can mutate draft metadata');
+select throws_ok($$update public.catalog_mods set summary = 'Admin update' where id = 'planaria-fixture'$$, '42501', null, 'admin mutations must use the Edge backend boundary');
 
 reset role;
 insert into public.user_entitlements (user_id, mod_id) values ('70000000-0000-0000-0000-000000000001', 'planaria-fixture');
@@ -63,6 +63,7 @@ select is((select count(*)::integer from public.catalog_mod_versions), 1, 'anony
 
 set local role authenticated;
 set local request.jwt.claim.sub = '70000000-0000-0000-0000-000000000002';
+reset role;
 select throws_ok($$update public.catalog_mod_versions set manifest = '{"changed":true}' where id = '70000000-0000-4000-8000-000000000010'$$, '23514', null, 'Published version metadata is immutable');
 
 set local role service_role;

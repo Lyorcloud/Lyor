@@ -17,7 +17,8 @@ export function HomeBillboard({ fallbackLabel, hidden = false, items, nextLabel,
   const [failedIds, setFailedIds] = useState<ReadonlySet<string>>(() => new Set());
   const [playbackKey, setPlaybackKey] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const activeItem = availableItems[activeIndex];
+  const displayedIndex = activeIndex < availableItems.length ? activeIndex : 0;
+  const activeItem = availableItems[displayedIndex];
 
   const move = useCallback((direction: 1 | -1, manual = false) => {
     if (availableItems.length === 0) return;
@@ -64,15 +65,15 @@ export function HomeBillboard({ fallbackLabel, hidden = false, items, nextLabel,
             src={activeItem.src}
           />
         ) : (
-          <img alt={activeItem.alt} decoding="async" fetchPriority={activeIndex === 0 ? 'high' : 'auto'} onError={() => setFailedIds((current) => new Set(current).add(activeItem.id))} src={activeItem.src} />
+          <img alt={activeItem.alt} decoding="async" fetchPriority={displayedIndex === 0 ? 'high' : 'auto'} onError={() => setFailedIds((current) => new Set(current).add(activeItem.id))} src={activeItem.src} />
         )}
       </div>
       {availableItems.length > 1 ? (
         <>
           <button aria-label={previousLabel} className="home-billboard__arrow home-billboard__arrow--previous" onClick={() => move(-1, true)} type="button"><SidebarArrow /></button>
           <button aria-label={nextLabel} className="home-billboard__arrow home-billboard__arrow--next" onClick={() => move(1, true)} type="button"><SidebarArrow direction="right" /></button>
-          <div className="home-billboard__dots" role="group" aria-label={`${activeIndex + 1} / ${availableItems.length}`}>
-            {availableItems.map((item, index) => <button aria-label={`${index + 1}`} aria-pressed={index === activeIndex} key={item.id} onClick={() => { setActiveIndex(index); setPlaybackKey((current) => current + 1); }} type="button" />)}
+          <div className="home-billboard__dots" role="group" aria-label={`${displayedIndex + 1} / ${availableItems.length}`}>
+            {availableItems.map((item, index) => <button aria-label={`${index + 1}`} aria-pressed={index === displayedIndex} key={item.id} onClick={() => { setActiveIndex(index); setPlaybackKey((current) => current + 1); }} type="button" />)}
           </div>
         </>
       ) : null}

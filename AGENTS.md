@@ -163,6 +163,30 @@ storage, and packaged smoke tests are not substitutes for production
 Supabase/R2/SMTP, an authorized real game/mod test, both clean Windows targets,
 trusted code signing, or a real old-build-to-new-release updater test.
 
+### Unsigned friends-and-family updater pilot
+
+The user explicitly authorizes public, unsigned `1.2.x` GitHub Releases only
+for a temporary friends-and-family updater pilot. Each unsigned publish must be
+started manually with the workflow's `unsigned_test_release` input and labelled
+as an unsigned test build. Automatic tag-triggered releases remain signing-
+gated. This exception does not satisfy or weaken the Milestone 10 production
+gate, and it does not authorize describing an unsigned build as production-
+ready. Testers may receive Windows Unknown publisher or SmartScreen warnings.
+
+### Post-audit Planaria dashboard supersession
+
+The user's explicit post-audit Planaria request authorizes replacing the
+Milestone 1 placeholder/local-preview surfaces with the real admin dashboard,
+narrow main/preload client, authenticated Edge Functions, server-owned admin
+account creation, resumable package/media/billboard upload orchestration, and
+Published-only Home feed implemented in this repository. It does not waive the
+Milestone 10 production gate. Service/secret keys and storage signing remain
+backend-only; the renderer receives no object keys, local paths, upload URLs,
+tokens, or generic IPC/filesystem capability. First-admin bootstrap is an
+environment-token-protected, atomic, one-time backend operation and is never a
+public signup path. No tag, push, release, remote migration/function deploy, or
+production object mutation is authorized by this supersession.
+
 V1 is intended to support regular mods and third-party trainer packages prepared by an administrator. This does not authorize a community upload flow or a native Lyor trainer.
 
 The current implementation must not access GTA V or RPF files. Milestone 4's real generic-file core may operate only on main-approved paths; tests use isolated fixtures and no production game is auto-registered yet. Visible Install and Uninstall UI state continues through the isolated mock service until verified catalog/package inputs are authorized. Game discovery UI also remains explicitly mock-only; do not disguise it as verified detection. The application updater is an explicit exception: it is real infrastructure implemented with `electron-updater` in the main process and is not part of the mod engine.

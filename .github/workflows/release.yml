@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v1.2.*'
+  workflow_dispatch:
+    inputs:
+      unsigned_test_release:
+        description: 'Publish an explicitly unsigned public test release'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -23,8 +30,10 @@ jobs:
         shell: bash
         run: |
           package_version="$(node -p "require('./package.json').version")"
-          test "v${package_version}" = "${GITHUB_REF_NAME}"
           [[ "${package_version}" =~ ^1\.2\.[0-9]+$ ]]
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            test "v${package_version}" = "${GITHUB_REF_NAME}"
+          fi
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
@@ -47,6 +56,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Require trusted Windows signing
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.unsigned_test_release != true }}
         shell: pwsh
         env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
@@ -55,13 +65,44 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:WIN_CSC_LINK) -or [string]::IsNullOrWhiteSpace($env:WIN_CSC_KEY_PASSWORD)) {
             throw 'Production publishing requires trusted Windows code-signing secrets.'
           }
+      - name: Prepare production runtime configuration
+        env:
+          LYOR_SUPABASE_URL: ${{ secrets.LYOR_SUPABASE_URL }}
+          LYOR_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LYOR_SUPABASE_PUBLISHABLE_KEY }}
+        run: npm run prepare:production-runtime
       - name: Publish stable GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          LYOR_ALLOW_UNSIGNED_TEST_RELEASE: ${{ inputs.unsigned_test_release || 'false' }}
         run: npm run publish:win
-      - run: npm run verify:release
+      - name: Verify trusted Authenticode signatures
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.unsigned_test_release != true }}
+        shell: pwsh
+        run: |
+          $targets = @(
+            'release/win-unpacked/Lyor.exe',
+            "release/Lyor-Setup-$((Get-Content package.json | ConvertFrom-Json).version)-x64.exe"
+          )
+          foreach ($target in $targets) {
+            $signature = Get-AuthenticodeSignature -LiteralPath $target
+            if ($signature.Status -ne 'Valid') {
+              throw "Authenticode verification failed for $target: $($signature.Status)"
+            }
+          }
+      - name: Verify production release artifacts
+        run: npm run verify:release
+      - name: Label unsigned test release
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.unsigned_test_release == true }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          gh release edit "v$version" `
+            --title "Lyor v$version — Unsigned Test" `
+            --notes "Unsigned public test build for the Lyor V1.2 updater pilot. Windows may show Unknown publisher or SmartScreen warnings. This is not a signed production release."
       - uses: actions/upload-artifact@v6
         with:
           name: Lyor-Setup-V1.2-${{ github.ref_name }}

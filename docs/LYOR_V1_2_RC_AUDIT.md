@@ -1,5 +1,48 @@
 # Lyor 1.2.0 local release-candidate audit
 
+## Post-audit Planaria dashboard revalidation — 2026-08-21
+
+The explicit post-audit Planaria dashboard implementation was rebuilt and
+revalidated locally on `codex/v1.2-milestones-4-10`. This is supplemental local
+RC evidence, not a production release or a replacement for the unresolved gate.
+
+- `npm run lint`: PASS.
+- `npm run typecheck`: PASS.
+- `npm test`: PASS — 16 files / 52 tests; the existing credential-dependent
+  production integration remains skipped.
+- `npm run test:supabase`: PASS — 5 pgTAP files / 154 assertions plus the real
+  local Auth integration test.
+- `npx supabase db lint --local --level warning`: PASS, no schema errors.
+- New Edge Functions served on the local Edge runtime; protected functions
+  rejected an anonymous token with `401`, and the public Published-only feed
+  returned `200`.
+- `npm run security:scan`: PASS — 125 source/config files and 103 renderer
+  files; no secret or renderer-auth marker finding.
+- `npm run build`: PASS.
+- `npm run dist:win`: PASS with `--publish never`.
+- `npm run verify:release`: PASS; updater metadata, installer, and blockmap are
+  internally consistent.
+- Packaged `Lyor.exe` remained alive for the 5-second smoke interval.
+- Installer and unpacked EXE Authenticode: `NotSigned`.
+
+An explicitly authorized friends-and-family updater pilot may publish this
+unsigned line through the manual `unsigned_test_release` workflow input. That
+test exception provides updater evidence only and does not clear the failed
+production signing gate below.
+
+| Local artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `C:\Lyor\release\Lyor-Setup-1.2.0-x64.exe` | 121256846 | `89a25f8cae2db58463b2ec0665e4db73c7668fc38fbf50623d2c6868b6c75640` |
+| `C:\Lyor\release\Lyor-Setup-1.2.0-x64.exe.blockmap` | 125775 | `685d950f283215c3b0556ad73c210747fefd204bf970249be78be30d74fb98f1` |
+| `C:\Lyor\release\latest.yml` | 345 | `43d7b6d8b2fe5c68bcfd7bdd9f04100f61a34ff5fc108b3778a1bb40b6a00132` |
+| `C:\Lyor\release\win-unpacked\Lyor.exe` | 225572864 | `340838109b8c2f630f7cce836136bcd541a26f86d660e77a88204e451d2bc68a` |
+
+No tag, push, GitHub Release, migration/function deploy, SMTP change, or
+production object-storage mutation was performed. Production Supabase/R2 or
+equivalent signer credentials, trusted Windows signing, both clean target
+machines, an authorized real game/mod case, and a published signed
+`1.2.0 -> 1.2.1` updater test remain blockers.
+
 Audit date: 2026-08-20
 
 Branch: `codex/v1.2-milestones-4-10`

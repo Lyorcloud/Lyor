@@ -382,6 +382,16 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+# Deliberately public endpoints. The bootstrap endpoint is protected by a
+# high-entropy, backend-only one-time token and an atomic zero-admin database
+# gate. All other Planaria functions retain the default JWT verification and
+# additionally resolve the user server-side.
+[functions.planaria-admin-bootstrap]
+verify_jwt = false
+
+[functions.planaria-public-feed]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

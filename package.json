@@ -23,11 +23,12 @@
     "test": "vitest run",
     "test:supabase": "node scripts/test-supabase.mjs",
     "security:scan": "node scripts/security-scan.mjs",
+    "prepare:production-runtime": "node scripts/create-production-runtime-config.mjs",
     "verify:release": "node scripts/verify-release-artifacts.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.electron.json && tsc --noEmit -p tsconfig.node.json",
     "start": "electron .",
     "build:prod": "npm run build",
-    "dist:win": "npm run build:prod && electron-builder --config electron-builder.config.cjs --win nsis --x64 --publish never",
+    "dist:win": "npm run build:prod && cross-env LYOR_RUNTIME_CONFIG=production electron-builder --config electron-builder.config.cjs --win nsis --x64 --publish never",
     "package:win": "npm run dist:win",
     "publish:win": "npm run build:prod && electron-builder --config electron-builder.config.cjs --win nsis --x64 --publish always"
   },

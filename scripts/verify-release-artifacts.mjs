@@ -26,6 +26,28 @@ if (!appUpdate.includes('owner: Lyorcloud') || !appUpdate.includes('repo: Lyor')
   throw new Error('Packaged updater target is not Lyorcloud/Lyor.');
 }
 
+const runtimeConfigPath = join(releaseRoot, 'win-unpacked', 'resources', 'runtime-config.json');
+const runtimeConfig = JSON.parse(await readFile(runtimeConfigPath, 'utf8'));
+const runtimeUrl = new URL(runtimeConfig.supabaseUrl);
+const normalizedHostname = runtimeUrl.hostname.toLowerCase();
+const isLoopback = normalizedHostname === 'localhost' ||
+  normalizedHostname.endsWith('.localhost') ||
+  normalizedHostname === '127.0.0.1' ||
+  normalizedHostname.startsWith('127.') ||
+  normalizedHostname === '::1' ||
+  normalizedHostname === '0.0.0.0';
+
+if (
+  runtimeUrl.protocol !== 'https:' ||
+  runtimeUrl.username ||
+  runtimeUrl.password ||
+  isLoopback ||
+  typeof runtimeConfig.supabasePublishableKey !== 'string' ||
+  runtimeConfig.supabasePublishableKey.length < 20
+) {
+  throw new Error('Packaged production runtime configuration is invalid or unsafe.');
+}
+
 const files = await readdir(releaseRoot);
 const excludedStaleArtifacts = files
   .filter((name) => /^Lyor-Setup-.*-x64\.exe(?:\.blockmap)?$/u.test(name))

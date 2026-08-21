@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { app, safeStorage } from 'electron';
@@ -10,6 +11,7 @@ import {
 } from '@supabase/supabase-js';
 
 import type {
+  AppRole,
   AuthError,
   AuthResult,
   AuthState,
@@ -20,7 +22,7 @@ import type {
 } from '../shared/auth';
 
 const AUTH_CALLBACK_URL = 'lyor://auth/callback';
-const SESSION_STORAGE_KEY = 'lyor.supabase.session';
+const DEFAULT_SESSION_STORAGE_KEY = 'lyor.supabase.session';
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 const MAX_EMAIL_LENGTH = 254;
 const MIN_PASSWORD_LENGTH = 8;
@@ -51,22 +53,38 @@ interface AuthConfiguration {
   readonly publishableKey: string;
 }
 
+const getPackagedConfiguration = (): Partial<AuthConfiguration> => {
+  if (!app.isPackaged) return {};
+  try {
+    const parsed = JSON.parse(readFileSync(join(process.resourcesPath, 'runtime-config.json'), 'utf8')) as Record<string, unknown>;
+    return {
+      url: typeof parsed.supabaseUrl === 'string' ? parsed.supabaseUrl.trim() : undefined,
+      publishableKey: typeof parsed.supabasePublishableKey === 'string' ? parsed.supabasePublishableKey.trim() : undefined,
+    };
+  } catch {
+    return {};
+  }
+};
+
 export interface AuthServiceOptions {
   readonly emitState: (state: AuthState) => void;
   readonly sessionPath?: string;
+  readonly sessionStorageKey?: string;
   readonly now?: () => number;
 }
 
 class SecureSessionStorage {
   readonly #filePath: string;
+  readonly #storageKey: string;
   readonly #memory = new Map<string, string>();
 
-  constructor(filePath: string) {
+  constructor(filePath: string, storageKey: string) {
     this.#filePath = filePath;
+    this.#storageKey = storageKey;
   }
 
   async getItem(key: string): Promise<string | null> {
-    if (key !== SESSION_STORAGE_KEY) return null;
+    if (key !== this.#storageKey) return null;
 
     try {
       if (!safeStorage.isEncryptionAvailable()) {
@@ -81,7 +99,7 @@ class SecureSessionStorage {
   }
 
   async setItem(key: string, value: string): Promise<void> {
-    if (key !== SESSION_STORAGE_KEY) return;
+    if (key !== this.#storageKey) return;
 
     if (!safeStorage.isEncryptionAvailable()) {
       this.#memory.set(key, value);
@@ -96,7 +114,7 @@ class SecureSessionStorage {
   }
 
   async removeItem(key: string): Promise<void> {
-    if (key !== SESSION_STORAGE_KEY) return;
+    if (key !== this.#storageKey) return;
     this.#memory.delete(key);
     await fs.rm(this.#filePath, { force: true }).catch(() => undefined);
     await fs.rm(`${this.#filePath}.tmp`, { force: true }).catch(() => undefined);
@@ -104,8 +122,9 @@ class SecureSessionStorage {
 }
 
 const getConfiguration = (): AuthConfiguration | null => {
-  const urlValue = process.env.LYOR_SUPABASE_URL?.trim();
-  const keyValue = process.env.LYOR_SUPABASE_PUBLISHABLE_KEY?.trim();
+  const packaged = getPackagedConfiguration();
+  const urlValue = process.env.LYOR_SUPABASE_URL?.trim() || packaged.url;
+  const keyValue = process.env.LYOR_SUPABASE_PUBLISHABLE_KEY?.trim() || packaged.publishableKey;
 
   if (!urlValue || !keyValue || keyValue.length > 4096 || !isClientSafeKey(keyValue)) return null;
 
@@ -132,6 +151,7 @@ const isValidPassword = (password: string): boolean =>
 const publicStateFromSession = (
   session: Session | null,
   passwordRecoveryPending = false,
+  role: AppRole = 'user',
 ): AuthState => {
   const user = session?.user;
   if (!session || !user?.email) return anonymousState(true);
@@ -142,9 +162,9 @@ const publicStateFromSession = (
       id: user.id,
       email: user.email,
       emailVerified: Boolean(user.email_confirmed_at),
-      // Authorization is enforced by private database roles and RLS. This value
-      // is presentation-only and deliberately does not trust user_metadata.
-      role: 'user',
+      // Resolved through a SECURITY DEFINER RPC backed by app_private roles.
+      // User-editable metadata is deliberately ignored.
+      role,
     },
     expiresAt: session.expires_at
       ? new Date(session.expires_at * 1_000).toISOString()
@@ -206,8 +226,10 @@ export class AuthService {
       return;
     }
 
+    const sessionStorageKey = options.sessionStorageKey ?? DEFAULT_SESSION_STORAGE_KEY;
     const storage = new SecureSessionStorage(
       options.sessionPath ?? join(app.getPath('userData'), 'auth', 'session.bin'),
+      sessionStorageKey,
     );
     this.#client = createClient(
       this.#configuration.url,
@@ -215,7 +237,7 @@ export class AuthService {
       {
         auth: {
           storage,
-          storageKey: SESSION_STORAGE_KEY,
+          storageKey: sessionStorageKey,
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: false,
@@ -226,7 +248,7 @@ export class AuthService {
 
     this.#client.auth.onAuthStateChange((event, session) => {
       const recovery = event === 'PASSWORD_RECOVERY';
-      this.#setState(publicStateFromSession(session, recovery));
+      void this.#hydrateSession(session, recovery);
     });
   }
 
@@ -247,7 +269,7 @@ export class AuthService {
       this.#setState(anonymousState(true));
       return this.#state;
     }
-    this.#setState(publicStateFromSession(data.session));
+    await this.#hydrateSession(data.session);
     return this.#state;
   }
 
@@ -264,7 +286,7 @@ export class AuthService {
       options: { emailRedirectTo: AUTH_CALLBACK_URL },
     });
     if (error) return this.#result(sanitizedError(error));
-    this.#setState(publicStateFromSession(data.session));
+    await this.#hydrateSession(data.session);
     return { state: this.#state, error: null, notice: 'verificationSent' };
   }
 
@@ -278,7 +300,7 @@ export class AuthService {
 
     const { data, error } = await this.#client.auth.signInWithPassword({ email, password: input.password });
     if (error) return this.#result(sanitizedError(error));
-    this.#setState(publicStateFromSession(data.session));
+    await this.#hydrateSession(data.session);
     return this.#result(null);
   }
 
@@ -304,7 +326,7 @@ export class AuthService {
     const { error } = await this.#client.auth.updateUser({ password: input.password });
     if (error) return this.#result(sanitizedError(error));
     const { data } = await this.#client.auth.getSession();
-    this.#setState(publicStateFromSession(data.session, false));
+    await this.#hydrateSession(data.session, false);
     return { state: this.#state, error: null, notice: 'passwordUpdated' };
   }
 
@@ -316,7 +338,7 @@ export class AuthService {
       this.#setState(anonymousState(true));
       return this.#result(sanitizedError(error));
     }
-    this.#setState(publicStateFromSession(data.session));
+    await this.#hydrateSession(data.session);
     return this.#result(null);
   }
 
@@ -362,6 +384,23 @@ export class AuthService {
     if (!isValidPassword(password)) return invalidInput('Password must contain 8 to 128 characters.');
     if (password !== confirmation) return invalidInput('Passwords do not match.');
     return null;
+  }
+
+  async #hydrateSession(session: Session | null, passwordRecoveryPending = false): Promise<void> {
+    if (!session || !this.#client) {
+      this.#setState(publicStateFromSession(session, passwordRecoveryPending));
+      return;
+    }
+    let role: AppRole = 'user';
+    try {
+      const { data, error } = await this.#client.rpc('planaria_my_access');
+      const row = Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
+      if (!error && row && (row.role === 'admin' || row.role === 'super_admin')) role = row.role;
+    } catch {
+      // Fail closed to the normal user role when the authorization lookup is
+      // unavailable. Backend endpoints still independently authorize.
+    }
+    this.#setState(publicStateFromSession(session, passwordRecoveryPending, role));
   }
 
   #isRateLimited(key: string): boolean {

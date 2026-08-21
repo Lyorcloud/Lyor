@@ -2178,7 +2178,8 @@ input:focus-visible,
 
 .planaria-page {
   display: grid;
-  gap: 18px;
+  width: 100%;
+  gap: 16px;
   color: var(--theme-primary-text);
 }
 
@@ -2191,72 +2192,200 @@ input:focus-visible,
 
 .planaria-page__header p,
 .planaria-page__header h1 { margin: 0; }
-.planaria-page__header p { color: var(--theme-secondary-text); }
+.planaria-page__header p { color: var(--theme-secondary-text); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.planaria-page__header h1 { font-size: clamp(25px, 3vw, 38px); }
 .planaria-page__admin-badge,
-.planaria-page__valid,
-.planaria-page__invalid {
+.planaria-status-chip {
   border: 1px solid var(--theme-strong-border);
   border-radius: 999px;
   padding: 5px 10px;
   font-size: 12px;
 }
-.planaria-page__notice {
-  margin: 0;
+.planaria-tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 6px;
+  padding: 5px;
   border: 1px solid var(--theme-border);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--theme-raised-surface);
-  padding: 12px 14px;
+  scrollbar-width: none;
 }
-.planaria-page__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
-  gap: 14px;
+.planaria-tabs::-webkit-scrollbar { display: none; }
+.planaria-tabs button {
+  min-height: 36px;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--theme-secondary-text);
+  padding: 0 14px;
+  font: 600 13px/1 Instrument Sans, sans-serif;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out;
 }
-.planaria-page__grid section {
+.planaria-tabs button:hover { border-color: var(--theme-border); background: var(--theme-control-surface); color: var(--theme-primary-text); }
+.planaria-tabs button[aria-current='page'] { border-color: var(--theme-strong-border); background: var(--theme-raised-hover); color: var(--theme-primary-text); }
+.planaria-dashboard-stack { display: grid; gap: 14px; }
+.planaria-stat-grid {
   display: grid;
-  align-content: start;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
   gap: 10px;
+}
+.planaria-stat,
+.planaria-panel {
   border: 1px solid var(--theme-border);
   border-radius: 15px;
   background: var(--theme-card-surface);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, .08);
+}
+.planaria-stat { display: grid; min-height: 108px; align-content: space-between; padding: 15px; }
+.planaria-stat span { color: var(--theme-secondary-text); font-size: 12px; }
+.planaria-stat strong { font-size: 27px; }
+.planaria-panel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
   padding: 16px;
 }
-.planaria-page__grid h2,
-.planaria-page__grid p,
-.planaria-page__grid ol { margin: 0; }
-.planaria-page__grid label { display: grid; gap: 5px; font-size: 13px; }
-.planaria-page__grid input,
-.planaria-page__grid textarea {
+.planaria-panel h2,
+.planaria-panel h3,
+.planaria-panel p,
+.planaria-panel dl,
+.planaria-panel dd { margin: 0; }
+.planaria-panel__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.planaria-panel__heading h2 { font-size: 19px; }
+.planaria-eyebrow { color: var(--theme-secondary-text); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; }
+.planaria-activity-list { display: grid; }
+.planaria-activity-list article {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--theme-border);
+  padding: 12px 2px;
+}
+.planaria-activity-list article:first-child { border-top: 0; }
+.planaria-activity-list p,
+.planaria-activity-list time { color: var(--theme-secondary-text); font-size: 12px; }
+.planaria-activity-icon { width: 8px; height: 8px; border-radius: 50%; background: var(--theme-accent-strong); box-shadow: 0 0 8px var(--theme-accent-strong); }
+.planaria-loading { display: grid; min-height: 220px; place-items: center; border: 1px solid var(--theme-border); border-radius: 15px; background: var(--theme-card-surface); padding: 24px; }
+.planaria-form-grid { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px; }
+.planaria-panel label,
+.planaria-upload-strip label { display: grid; gap: 6px; color: var(--theme-secondary-text); font-size: 12px; }
+.planaria-panel input,
+.planaria-panel textarea,
+.planaria-panel select,
+.planaria-upload-strip input {
+  width: 100%;
+  min-height: 38px;
+  box-sizing: border-box;
   border: 1px solid var(--theme-border);
   border-radius: 9px;
   background: var(--theme-input-surface);
   color: var(--theme-primary-text);
   padding: 9px 10px;
   font: inherit;
+  outline: none;
+  transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
 }
-.planaria-page__grid textarea { min-height: 150px; resize: vertical; }
-.planaria-page__grid button { min-height: 34px; border: 0; border-radius: 9px; }
-.planaria-page__valid { color: #8fffa1; }
-.planaria-page__invalid { color: #ff9c9c; }
-
-@container content (max-width: 720px) {
-  .planaria-page__grid { grid-template-columns: minmax(0, 1fr); }
+.planaria-panel input:focus,
+.planaria-panel textarea:focus,
+.planaria-panel select:focus,
+.planaria-upload-strip input:focus { border-color: var(--theme-strong-border); box-shadow: 0 0 0 3px rgba(94, 140, 255, .18); }
+.planaria-panel textarea { min-height: 86px; resize: vertical; }
+.planaria-field-wide { grid-column: 1 / -1; }
+.planaria-form-grid--primary { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+.planaria-mod-hero-upload { display: grid; gap: 10px; }
+.planaria-mod-hero-upload > button:first-child {
+  display: grid;
+  min-height: 210px;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  border: 1px dashed var(--theme-strong-border);
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--theme-raised-surface), var(--theme-input-surface));
+  text-align: center;
 }
+.planaria-mod-hero-upload > button:first-child strong { font-size: 18px; }
+.planaria-mod-hero-upload > button:first-child small { color: var(--theme-secondary-text); }
+.planaria-mod-hero-upload__icon { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid var(--theme-border); border-radius: 50%; font-size: 25px; }
+.planaria-install-mode { min-width: 0; margin: 0; border: 0; padding: 0; }
+.planaria-install-mode legend { margin-bottom: 6px; color: var(--theme-secondary-text); font-size: 12px; }
+.planaria-install-mode > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.planaria-install-mode button { display: grid; min-height: 72px; align-content: center; gap: 4px; text-align: left; }
+.planaria-install-mode button[aria-pressed='true'] { border-color: var(--theme-strong-border); background: var(--theme-selected-surface); box-shadow: 0 0 0 3px rgba(94, 140, 255, .12); }
+.planaria-install-mode small { color: var(--theme-secondary-text); }
+.planaria-advanced-fields { border: 1px solid var(--theme-border); border-radius: 12px; background: var(--theme-raised-surface); }
+.planaria-advanced-fields summary { cursor: pointer; padding: 12px 14px; color: var(--theme-secondary-text); font-weight: 700; }
+.planaria-advanced-fields[open] summary { border-bottom: 1px solid var(--theme-border); }
+.planaria-advanced-fields > .planaria-form-grid { padding: 14px; }
+.planaria-manifest-editor { min-height: 190px !important; font-family: Consolas, monospace !important; font-size: 12px !important; }
+.planaria-panel button,
+.planaria-loading button {
+  min-height: 34px;
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  background: var(--theme-control-surface);
+  color: var(--theme-primary-text);
+  padding: 0 12px;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, opacity 160ms ease-out;
+}
+.planaria-panel button:hover:not(:disabled),
+.planaria-loading button:hover:not(:disabled) { border-color: var(--theme-strong-border); background: var(--theme-raised-hover); }
+.planaria-panel button:disabled { cursor: not-allowed; opacity: .48; }
+.planaria-primary-button { border-color: var(--theme-strong-border) !important; background: var(--theme-selected-surface) !important; color: var(--theme-primary-text) !important; font-weight: 700 !important; }
+.planaria-secondary-button { min-height: 40px !important; }
+.planaria-danger-button { color: var(--theme-error) !important; }
+.planaria-error { color: var(--theme-error) !important; }
+.planaria-success,
+.planaria-valid { color: #8fffa1 !important; }
+.planaria-notice { border: 1px solid var(--theme-border); border-radius: 10px; background: var(--theme-raised-surface); padding: 12px; color: var(--theme-secondary-text); }
+.planaria-state,
+.planaria-package-state { display: inline-flex; width: max-content; align-items: center; border: 1px solid var(--theme-border); border-radius: 999px; padding: 4px 8px; color: var(--theme-secondary-text); font-size: 11px; white-space: nowrap; }
+.planaria-state--ready,
+.planaria-package-state.is-verified { color: #9cff8f; border-color: rgba(156, 255, 143, .36); }
+.planaria-state--published { color: #fff; border-color: rgba(94, 140, 255, .72); background: rgba(94, 140, 255, .22); }
+.planaria-state--disabled { opacity: .58; }
+.planaria-mod-list { display: grid; gap: 10px; }
+.planaria-mod-list > article { display: grid; gap: 10px; border: 1px solid var(--theme-border); border-radius: 12px; background: var(--theme-raised-surface); padding: 13px; }
+.planaria-mod-list > article > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.planaria-mod-list header p,
+.planaria-mod-list > article > p { color: var(--theme-secondary-text); font-size: 12px; }
+.planaria-version-list { display: grid; gap: 6px; }
+.planaria-version-list > div { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(130px, auto) auto; align-items: center; gap: 10px; border-top: 1px solid var(--theme-border); padding-top: 9px; }
+.planaria-version-list > div > div:first-child { display: grid; gap: 2px; }
+.planaria-version-list small { color: var(--theme-secondary-text); }
+.planaria-inline-actions,
+.planaria-footer-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.planaria-file-grid { display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 12px; }
+.planaria-upload-page .planaria-file-grid { grid-template-columns: minmax(0, 1fr); }
+.planaria-file-grid article { display: grid; align-content: start; gap: 10px; border: 1px solid var(--theme-border); border-radius: 12px; background: var(--theme-raised-surface); padding: 13px; }
+.planaria-file-grid dl { display: grid; gap: 5px; }
+.planaria-file-grid dl > div { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 8px; }
+.planaria-file-grid dt { color: var(--theme-secondary-text); }
+.planaria-hash { overflow: hidden; text-overflow: ellipsis; font-family: Consolas, monospace; font-size: 11px; }
+.planaria-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.planaria-progress progress { width: 100%; height: 7px; accent-color: var(--theme-accent-strong); }
+.planaria-progress span { color: var(--theme-secondary-text); font-size: 12px; }
+.planaria-upload-strip { display: grid; grid-template-columns: minmax(180px, auto) minmax(220px, 1fr) auto; align-items: end; gap: 10px; }
+.planaria-admin-form { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)) auto; align-items: end; gap: 10px; }
+.planaria-account-list { display: grid; gap: 7px; }
+.planaria-account-list article { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(140px, auto); align-items: center; gap: 12px; border-top: 1px solid var(--theme-border); padding: 10px 2px; }
+.planaria-account-list p,
+.planaria-account-list small { color: var(--theme-secondary-text); }
+.planaria-release-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 10px; }
+.planaria-release-grid article { display: grid; gap: 10px; border: 1px solid var(--theme-border); border-radius: 11px; background: var(--theme-raised-surface); padding: 13px; }
+.planaria-release-grid span { color: var(--theme-secondary-text); font-size: 12px; }
 
 .billboard-admin {
-  display: grid;
-  gap: 14px;
-  border: 1px solid var(--theme-border);
-  border-radius: 15px;
-  background: var(--theme-card-surface);
-  padding: 16px;
+  display: grid; gap: 14px;
 }
-.billboard-admin__heading,
 .billboard-admin__layout,
 .billboard-admin__actions { display: flex; gap: 10px; }
-.billboard-admin__heading { align-items: center; justify-content: space-between; }
-.billboard-admin__heading h2 { margin: 0; }
-.billboard-admin__upload { display: grid; gap: 5px; font-size: 13px; }
 .billboard-admin__layout { align-items: flex-start; }
 .billboard-admin__list { display: grid; flex: 1 1 380px; gap: 8px; }
 .billboard-admin__list article {
@@ -2269,16 +2398,38 @@ input:focus-visible,
 }
 .billboard-admin__select { display: grid; gap: 3px; border: 0; background: transparent; color: inherit; text-align: start; }
 .billboard-admin__actions { align-items: center; }
-.billboard-admin__actions button { min-width: 30px; min-height: 30px; border: 1px solid var(--theme-border); border-radius: 7px; background: var(--theme-control-surface); color: inherit; }
+.billboard-admin__actions button { min-width: 30px; min-height: 30px; padding-inline: 8px; }
 .billboard-admin__preview { flex: 1 1 480px; min-width: 0; }
 .billboard-admin__preview h3 { margin-block: 0 8px; }
 .billboard-admin__preview .home-billboard { width: 100%; }
-.billboard-admin__error { color: var(--theme-error); }
+.planaria-empty-preview { display: grid; aspect-ratio: 105 / 46; place-items: center; border: 1px dashed var(--theme-border); border-radius: 14px; color: var(--theme-secondary-text); text-align: center; }
+
+@container content (max-width: 1050px) {
+  .planaria-stat-grid { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+  .planaria-form-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+  .planaria-admin-form { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+  .planaria-release-grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+}
 
 @container content (max-width: 900px) {
   .billboard-admin__layout { flex-direction: column; }
   .billboard-admin__list,
   .billboard-admin__preview { flex-basis: auto; width: 100%; }
+}
+
+@container content (max-width: 680px) {
+  .planaria-stat-grid,
+  .planaria-form-grid,
+  .planaria-file-grid,
+  .planaria-admin-form,
+  .planaria-release-grid { grid-template-columns: minmax(0, 1fr); }
+  .planaria-upload-strip { grid-template-columns: minmax(0, 1fr); }
+  .planaria-version-list > div,
+  .planaria-account-list article { grid-template-columns: minmax(0, 1fr); }
+  .planaria-inline-actions,
+  .planaria-footer-actions { justify-content: flex-start; }
+  .planaria-activity-list article { grid-template-columns: 10px minmax(0, 1fr); }
+  .planaria-activity-list time { grid-column: 2; }
 }
 
 @media (prefers-reduced-motion: reduce) {

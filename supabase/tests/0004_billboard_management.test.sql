@@ -32,9 +32,11 @@ select throws_ok($$select public.planaria_move_billboard('80000000-0000-0000-000
 
 set local request.jwt.claim.sub = '80000000-0000-0000-0000-000000000002';
 select is((select count(*)::integer from public.billboards), 4, 'admin sees all billboard states');
-select lives_ok($$update public.billboards set alt_text = 'Updated Draft' where id = '80000000-0000-4000-8000-000000000011'$$, 'admin updates Draft metadata');
-select throws_ok($$update public.billboards set object_key = 'billboards/mutated.mp4' where id = '80000000-0000-4000-8000-000000000012'$$, '23514', null, 'Published media identity is immutable');
+select throws_ok($$update public.billboards set alt_text = 'Updated Draft' where id = '80000000-0000-4000-8000-000000000011'$$, '42501', null, 'admin mutations must use the Edge backend boundary');
 
+reset role;
+update public.billboards set alt_text = 'Updated Draft' where id = '80000000-0000-4000-8000-000000000011';
+select throws_ok($$update public.billboards set object_key = 'billboards/mutated.mp4' where id = '80000000-0000-4000-8000-000000000012'$$, '23514', null, 'Published media identity is immutable');
 set local role service_role;
 select ok(public.planaria_authorize_admin('80000000-0000-0000-0000-000000000002'), 'backend recognizes billboard admin');
 select ok(public.planaria_move_billboard('80000000-0000-0000-0000-000000000002','80000000-0000-4000-8000-000000000012',-1,1), 'backend atomically moves billboard');

@@ -29,6 +29,23 @@ import type {
   LyorInstallationEngineApi,
   UninstallTarget,
 } from '../shared/installation-engine';
+import type {
+  LyorPlanariaApi,
+  PlanariaBillboardMutationInput,
+  PlanariaBillboardUploadInput,
+  PlanariaCreateAdminInput,
+  PlanariaDashboardSnapshot,
+  PlanariaFilePurpose,
+  PlanariaFileSelection,
+  PlanariaModMediaUploadInput,
+  PlanariaPackageUploadInput,
+  PlanariaSaveDraftInput,
+  PlanariaSaveDraftResult,
+  PlanariaTransitionInput,
+  PlanariaUploadProgress,
+  PublicBillboardItem,
+} from '../shared/planaria';
+import type { PlanariaAuthApi } from '../shared/planaria-auth';
 
 import type {
   WindowControlChannel,
@@ -72,6 +89,12 @@ const PRELOAD_AUTH_CHANNELS = {
   logout: 'auth:logout',
   stateChanged: 'auth:state-changed',
 } as const;
+const PRELOAD_PLANARIA_AUTH_CHANNELS = {
+  getState: 'planaria-auth:get-state',
+  login: 'planaria-auth:login',
+  logout: 'planaria-auth:logout',
+  stateChanged: 'planaria-auth:state-changed',
+} as const;
 
 const PRELOAD_CLOUD_SYNC_CHANNELS = {
   getState: 'cloud-sync:get-state', bootstrap: 'cloud-sync:bootstrap', updateSettings: 'cloud-sync:update-settings',
@@ -83,6 +106,14 @@ const PRELOAD_INSTALLATION_ENGINE_CHANNELS = {
   getState: 'installation-engine:get-state',
   install: 'installation-engine:install',
   uninstall: 'installation-engine:uninstall',
+} as const;
+const PRELOAD_PLANARIA_CHANNELS = {
+  getDashboard: 'planaria:get-dashboard', getPublicBillboards: 'planaria:get-public-billboards',
+  selectFile: 'planaria:select-file', saveDraft: 'planaria:save-draft',
+  uploadPackage: 'planaria:upload-package', uploadModMedia: 'planaria:upload-mod-media',
+  uploadBillboard: 'planaria:upload-billboard', transitionVersion: 'planaria:transition-version',
+  mutateBillboard: 'planaria:mutate-billboard', createAdmin: 'planaria:create-admin',
+  uploadProgress: 'planaria:upload-progress',
 } as const;
 
 const AUTH_STATUSES: ReadonlySet<string> = new Set<AuthStatus>([
@@ -126,6 +157,16 @@ const UPDATE_ERROR_CODES: ReadonlySet<string> = new Set<UpdateErrorCode>([
 
 const isNullableString = (value: unknown): value is string | null =>
   value === null || typeof value === 'string';
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+const isSafeMediaUrl = (value: unknown): value is string => {
+  if (typeof value !== 'string' || value.length > 4096) return false;
+  try {
+    const url = new URL(value);
+    const loopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost';
+    return (url.protocol === 'https:' || (url.protocol === 'http:' && loopback)) && !url.username && !url.password;
+  } catch { return false; }
+};
 
 const isNonNegativeFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0;
@@ -244,6 +285,42 @@ const isInstallationEngineState = (value: unknown): value is InstallationEngineS
       typeof (item as Record<string, unknown>).version === 'string');
 };
 
+const hasNoPrivilegedFields = (value: unknown): boolean => {
+  if (Array.isArray(value)) return value.every(hasNoPrivilegedFields);
+  if (!isRecord(value)) return true;
+  if (['objectKey', 'object_key', 'localPath', 'uploadUrl', 'providerUploadId']
+    .some((key) => key in value)) return false;
+  if ('previewUrl' in value && value.previewUrl !== null && !isSafeMediaUrl(value.previewUrl)) return false;
+  return Object.values(value).every(hasNoPrivilegedFields);
+};
+const isPlanariaDashboard = (value: unknown): value is PlanariaDashboardSnapshot => {
+  if (!isRecord(value) || !isRecord(value.access) || !isRecord(value.stats) || !hasNoPrivilegedFields(value)) return false;
+  if (!['admin', 'super_admin'].includes(String(value.access.role)) || typeof value.access.canManageAdmins !== 'boolean') return false;
+  if (!['totalMods', 'publishedMods', 'completedDownloads', 'activeBillboards', 'adminAccounts']
+    .every((key) => isNonNegativeFiniteNumber((value.stats as Record<string, unknown>)[key]))) return false;
+  return ['games', 'mods', 'versions', 'packages', 'media', 'billboards', 'accounts', 'recentActivity']
+    .every((key) => Array.isArray(value[key]));
+};
+const isPublicBillboard = (value: unknown): value is PublicBillboardItem =>
+  isRecord(value) && typeof value.id === 'string' && (value.kind === 'image' || value.kind === 'video') &&
+  typeof value.alt === 'string' && Number.isInteger(value.displayOrder) && value.published === true &&
+  isSafeMediaUrl(value.src);
+const isPlanariaFileSelection = (value: unknown): value is PlanariaFileSelection =>
+  isRecord(value) && typeof value.id === 'string' &&
+  ['mod-package', 'mod-image', 'billboard'].includes(String(value.purpose)) &&
+  typeof value.name === 'string' && typeof value.mimeType === 'string' &&
+  isNonNegativeFiniteNumber(value.size) && typeof value.sha256 === 'string' && /^[a-f0-9]{64}$/u.test(value.sha256) &&
+  hasNoPrivilegedFields(value);
+const isPlanariaSaveDraftResult = (value: unknown): value is PlanariaSaveDraftResult =>
+  isRecord(value) && typeof value.versionId === 'string' && typeof value.modUpdatedAt === 'string' &&
+  typeof value.versionUpdatedAt === 'string';
+const isPlanariaUploadProgress = (value: unknown): value is PlanariaUploadProgress =>
+  isRecord(value) && typeof value.uploadId === 'string' &&
+  ['mod-package', 'mod-image', 'billboard'].includes(String(value.purpose)) &&
+  ['preparing', 'uploading', 'finalizing', 'success', 'error'].includes(String(value.status)) &&
+  isNonNegativeFiniteNumber(value.percent) && Number(value.percent) <= 100 &&
+  isNonNegativeFiniteNumber(value.transferred) && isNonNegativeFiniteNumber(value.total) && isNullableString(value.error);
+
 const invokeCloudSync = async (channel: string, input?: unknown): Promise<CloudSyncState> => {
   const result: unknown = input === undefined ? await ipcRenderer.invoke(channel) : await ipcRenderer.invoke(channel, input);
   if (!isCloudSyncState(result)) throw new TypeError('Invalid cloud-sync response.');
@@ -344,6 +421,23 @@ const lyorAuth: Readonly<LyorAuthApi> = Object.freeze({
   },
 });
 
+const planariaAuth: Readonly<PlanariaAuthApi> = Object.freeze({
+  getState: async () => {
+    const result: unknown = await ipcRenderer.invoke(PRELOAD_PLANARIA_AUTH_CHANNELS.getState);
+    if (!isAuthState(result)) throw new TypeError('Invalid Planaria auth state.');
+    return result;
+  },
+  login: (input: LoginInput) => invokeAuthResult(PRELOAD_PLANARIA_AUTH_CHANNELS.login, input),
+  logout: () => invokeAuthResult(PRELOAD_PLANARIA_AUTH_CHANNELS.logout),
+  onStateChange: (listener: (state: AuthState) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, value: unknown): void => {
+      if (isAuthState(value)) listener(value);
+    };
+    ipcRenderer.on(PRELOAD_PLANARIA_AUTH_CHANNELS.stateChanged, handler);
+    return () => ipcRenderer.removeListener(PRELOAD_PLANARIA_AUTH_CHANNELS.stateChanged, handler);
+  },
+});
+
 const lyorCloudSync: Readonly<LyorCloudSyncApi> = Object.freeze({
   getState: () => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.getState),
   bootstrap: () => invokeCloudSync(PRELOAD_CLOUD_SYNC_CHANNELS.bootstrap),
@@ -378,8 +472,51 @@ const lyorInstallationEngine: Readonly<LyorInstallationEngineApi> = Object.freez
   uninstall: (input: UninstallTarget) => invokeEngineResult(PRELOAD_INSTALLATION_ENGINE_CHANNELS.uninstall, input),
 });
 
+const invokePlanariaVoid = async (channel: string, input: unknown): Promise<void> => {
+  const result: unknown = await ipcRenderer.invoke(channel, input);
+  if (result !== undefined && result !== null) throw new TypeError('Invalid Planaria response.');
+};
+const lyorPlanaria: Readonly<LyorPlanariaApi> = Object.freeze({
+  getDashboard: async () => {
+    const result: unknown = await ipcRenderer.invoke(PRELOAD_PLANARIA_CHANNELS.getDashboard);
+    if (!isPlanariaDashboard(result)) throw new TypeError('Invalid Planaria dashboard response.');
+    return result;
+  },
+  getPublicBillboards: async () => {
+    const result: unknown = await ipcRenderer.invoke(PRELOAD_PLANARIA_CHANNELS.getPublicBillboards);
+    if (!Array.isArray(result) || !result.every(isPublicBillboard)) throw new TypeError('Invalid billboard feed response.');
+    return result;
+  },
+  selectFile: async (purpose: PlanariaFilePurpose) => {
+    const result: unknown = await ipcRenderer.invoke(PRELOAD_PLANARIA_CHANNELS.selectFile, purpose);
+    if (result === null) return null;
+    if (!isPlanariaFileSelection(result)) throw new TypeError('Invalid selected-file response.');
+    return result;
+  },
+  saveDraft: async (input: PlanariaSaveDraftInput) => {
+    const result: unknown = await ipcRenderer.invoke(PRELOAD_PLANARIA_CHANNELS.saveDraft, input);
+    if (!isPlanariaSaveDraftResult(result)) throw new TypeError('Invalid Planaria draft response.');
+    return result;
+  },
+  uploadPackage: (input: PlanariaPackageUploadInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.uploadPackage, input),
+  uploadModMedia: (input: PlanariaModMediaUploadInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.uploadModMedia, input),
+  uploadBillboard: (input: PlanariaBillboardUploadInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.uploadBillboard, input),
+  transitionVersion: (input: PlanariaTransitionInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.transitionVersion, input),
+  mutateBillboard: (input: PlanariaBillboardMutationInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.mutateBillboard, input),
+  createAdmin: (input: PlanariaCreateAdminInput) => invokePlanariaVoid(PRELOAD_PLANARIA_CHANNELS.createAdmin, input),
+  onUploadProgress: (listener: (progress: PlanariaUploadProgress) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, value: unknown): void => {
+      if (isPlanariaUploadProgress(value)) listener(value);
+    };
+    ipcRenderer.on(PRELOAD_PLANARIA_CHANNELS.uploadProgress, handler);
+    return () => ipcRenderer.removeListener(PRELOAD_PLANARIA_CHANNELS.uploadProgress, handler);
+  },
+});
+
 contextBridge.exposeInMainWorld('windowControls', windowControls);
 contextBridge.exposeInMainWorld('lyorUpdater', lyorUpdater);
 contextBridge.exposeInMainWorld('lyorAuth', lyorAuth);
+contextBridge.exposeInMainWorld('planariaAuth', planariaAuth);
 contextBridge.exposeInMainWorld('lyorCloudSync', lyorCloudSync);
 contextBridge.exposeInMainWorld('lyorInstallationEngine', lyorInstallationEngine);
+contextBridge.exposeInMainWorld('lyorPlanaria', lyorPlanaria);

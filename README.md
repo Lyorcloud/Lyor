@@ -34,15 +34,17 @@ temporary fixtures; it is deliberately not a production GTA V/RPF adapter.
 Milestone 7 adds the admin-only Planaria boundary, catalog/version/package and
 entitlement migrations, authenticated Edge Function sources, immutable
 Draft/Ready/Published lifecycle, verified analytics, and provider-neutral
-multipart object storage. Local Supabase and S3-compatible fixtures are tested;
+multipart object storage. The post-audit dashboard connects overview/audit,
+mod management/upload, admin accounts, and release status to that boundary
+through narrow main/preload APIs. Local Supabase and S3-compatible fixtures are tested;
 production Supabase, R2, custom SMTP, and Edge deployment still require external
 credentials and are not claimed complete.
 
 Milestone 8 adds admin-only Manage Billboard UI, server media validation,
 concurrent-safe ordering, Draft/Published/Disabled visibility, safe deletion,
-and Home/preview carousel parity. Local preview mode is functional and clearly
-labelled; production billboard storage still requires the Milestone 7 external
-backend deployment.
+and Home/preview carousel parity. Billboard upload and lifecycle actions now use
+the authenticated backend, and Home requests only Published records. Production
+billboard storage still requires the external storage signer/provider deployment.
 
 Milestone 9 adds PR/push validation, a protected signed tag-release workflow,
 strict same-version/downgrade/integrity updater policy, explicit Later/Retry
@@ -115,7 +117,9 @@ npm run dist:win
 
 Packaging always writes the versioned NSIS installer, blockmap, and
 `latest.yml` for the verified `Lyorcloud/Lyor` GitHub Release target; it also
-packages `app-update.yml`. The unpacked application is written to
+packages `app-update.yml`. The canonical command requires and embeds
+`build/runtime-config.production.json`, preventing a test installer from
+silently pointing at local Docker/Supabase. The unpacked application is written to
 `release/win-unpacked/Lyor.exe`. GitHub release publishing is intentionally a
 separate, explicit command:
 
@@ -184,6 +188,11 @@ cache and idempotent retry queue under Electron `userData`, so offline changes
 are retried without making local uninstall/backup behavior cloud-dependent.
 Each installation receives a random persistent UUID; no hardware fingerprint
 is generated.
+
+The first Planaria administrator is not created through public signup or the
+desktop form. After an independently authorized backend deployment, follow the
+one-time operator procedure in
+[`docs/PLANARIA_ADMIN_BOOTSTRAP.md`](docs/PLANARIA_ADMIN_BOOTSTRAP.md).
 
 ## Figma
 
