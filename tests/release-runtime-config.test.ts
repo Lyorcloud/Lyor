@@ -39,11 +39,14 @@ describe('production runtime configuration', () => {
     };
     const builderConfig = readFileSync('electron-builder.config.cjs', 'utf8');
     const verifier = readFileSync('scripts/verify-release-artifacts.mjs', 'utf8');
+    const releaseWorkflow = readFileSync('.github/workflows/release.yml', 'utf8');
 
     expect(packageJson.scripts['dist:win']).toContain('LYOR_RUNTIME_CONFIG=production');
     expect(builderConfig).toContain("process.env.LYOR_RUNTIME_CONFIG === 'production'");
     expect(builderConfig).toContain("process.env.LYOR_ALLOW_UNSIGNED_TEST_RELEASE === 'true'");
     expect(builderConfig).toContain('forceCodeSigning: isPublishCommand && !allowUnsignedTestRelease');
+    expect(releaseWorkflow).toContain('Create unsigned test release tag');
+    expect(releaseWorkflow).toContain('git push origin $tag');
     expect(verifier).not.toContain('LYOR_REQUIRE_PRODUCTION_RUNTIME_CONFIG');
   });
 });

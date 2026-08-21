@@ -70,6 +70,22 @@ jobs:
           LYOR_SUPABASE_URL: ${{ secrets.LYOR_SUPABASE_URL }}
           LYOR_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LYOR_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run prepare:production-runtime
+      - name: Create unsigned test release tag
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.unsigned_test_release == true }}
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $tag = "v$version"
+          git fetch --tags --force
+          $existing = git rev-list -n 1 $tag 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if ($existing -ne $env:GITHUB_SHA) {
+              throw "$tag already points to a different commit. Bump package.json before publishing."
+            }
+          } else {
+            git tag $tag $env:GITHUB_SHA
+            git push origin $tag
+          }
       - name: Publish stable GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
