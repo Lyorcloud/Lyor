@@ -65,7 +65,6 @@ module.exports = {
   productName: "Lyor",
   asar: true,
   forceCodeSigning: isPublishCommand && !allowUnsignedTestRelease,
-  electronDist: "node_modules/electron/dist",
   electronFuses: {
     runAsNode: false,
     enableNodeOptionsEnvironmentVariable: false,
