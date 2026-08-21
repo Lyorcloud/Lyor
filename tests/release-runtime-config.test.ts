@@ -47,6 +47,8 @@ describe('production runtime configuration', () => {
     expect(builderConfig).toContain('forceCodeSigning: isPublishCommand && !allowUnsignedTestRelease');
     expect(releaseWorkflow).toContain('Create unsigned test release tag');
     expect(releaseWorkflow).toContain('git push origin $tag');
+    expect(releaseWorkflow).toContain('Ensure GitHub Release exists');
+    expect(releaseWorkflow).not.toContain('gh release edit');
     expect(verifier).not.toContain('LYOR_REQUIRE_PRODUCTION_RUNTIME_CONFIG');
   });
 });
