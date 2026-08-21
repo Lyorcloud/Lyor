@@ -2,7 +2,7 @@
 
 Lyor is a bilingual English/Turkish Windows desktop application for discovering, installing, and removing game mods without requiring the player to operate a separate mod tool, engine, or manager.
 
-The repository is on the V1.2 baseline at version `1.2.0`. Builds `0.1.0`
+The repository is on the V1.2 patch line at version `1.2.1`. Builds `0.1.0`
 through `0.1.3` are development/prototype builds. The production patch line is
 `1.2.0`, `1.2.1`, `1.2.2`, and so on. **Lyor Setup V1.2** is the canonical
 user-facing installer family name; each generated installer filename also

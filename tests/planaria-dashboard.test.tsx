@@ -9,7 +9,10 @@ import { I18nProvider } from '../src/i18n/I18nProvider';
 const snapshot: PlanariaDashboardSnapshot = {
   access: { role: 'super_admin', canManageAdmins: true },
   stats: { totalMods: 1, publishedMods: 0, completedDownloads: 12, activeBillboards: 0, adminAccounts: 1 },
-  games: [{ id: 'game-synthetic-fixture', edition: 'standard', displayName: 'Synthetic Fixture', enabled: true }],
+  games: [
+    { id: 'game-synthetic-fixture', edition: 'standard', displayName: 'Synthetic Fixture', enabled: true },
+    { id: 'game-red-dead-redemption-2', edition: 'standard', displayName: 'Red Dead Redemption 2', enabled: true },
+  ],
   mods: [{ id: 'sample-mod', name: 'Sample Mod', summary: 'Fixture', gameId: 'game-synthetic-fixture', state: 'draft', createdAt: '2026-08-21T00:00:00Z', updatedAt: '2026-08-21T00:00:00Z' }],
   versions: [], packages: [], media: [], billboards: [],
   accounts: [{ id: '00000000-0000-4000-8000-000000000001', email: 'root@example.test', username: 'root', role: 'super_admin', canManageAdmins: true, createdAt: '2026-08-21T00:00:00Z', lastSignInAt: null }],
@@ -28,6 +31,7 @@ describe('Planaria dashboard', () => {
     const planaria: LyorPlanariaApi = {
       getDashboard: vi.fn().mockResolvedValue(snapshot), getPublicBillboards: vi.fn().mockResolvedValue([]),
       selectFile: vi.fn().mockResolvedValue(null), saveDraft: vi.fn(), uploadPackage: vi.fn(),
+      selectTargetPath: vi.fn().mockResolvedValue({ relativePath: 'mods/update/content' }),
       uploadModMedia: vi.fn(), uploadBillboard: vi.fn(), transitionVersion: vi.fn(),
       mutateBillboard: vi.fn(), createAdmin: vi.fn(), onUploadProgress: vi.fn().mockReturnValue(() => undefined),
     };
@@ -52,5 +56,19 @@ describe('Planaria dashboard', () => {
     expect(screen.getByRole('button', { name: 'Create admin' })).toBeInTheDocument();
     expect(screen.getByText('root@example.test')).toBeInTheDocument();
     await waitFor(() => expect(window.lyorPlanaria.getDashboard).toHaveBeenCalledTimes(1));
+  });
+
+  it('searches the game catalog by alias and selects a safe target through the native picker', async () => {
+    render(<I18nProvider><PlanariaPage /></I18nProvider>);
+    await screen.findByText('Total mods');
+    fireEvent.click(screen.getByRole('button', { name: 'Mod Upload' }));
+    const gameSearch = screen.getByRole('combobox', { name: 'Game' });
+    fireEvent.change(gameSearch, { target: { value: 'red dead' } });
+    fireEvent.click(screen.getByRole('option', { name: /Red Dead Redemption 2/u }));
+    expect(gameSearch).toHaveValue('Red Dead Redemption 2');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose with File Explorer' }));
+    await waitFor(() => expect(window.lyorPlanaria.selectTargetPath).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('textbox', { name: 'Selected relative destination path' })).toHaveValue('mods/update/content');
   });
 });

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 
 import type {
   PlanariaDashboardSnapshot,
   PlanariaFileSelection,
+  PlanariaGame,
   PlanariaModVersion,
   PlanariaUploadProgress,
 } from '../../electron/shared/planaria';
@@ -33,6 +34,83 @@ const formatBytes = (value: number): string => {
   while (size >= 1024 && index < units.length - 1) { size /= 1024; index += 1; }
   return `${size.toFixed(size >= 10 ? 1 : 2)} ${units[index]}`;
 };
+
+const gameAliases: Readonly<Record<string, readonly string[]>> = {
+  'game-red-dead-redemption-2': ['red dead', 'red dead 2', 'rdr', 'rdr2'],
+  'gta5-legacy': ['gta', 'gta 5', 'gta v', 'grand theft auto'],
+  'game-spider-man-2': ['spider man', 'spiderman', 'sm2'],
+  'game-spider-man-remastered': ['spider man remastered', 'spiderman remastered', 'smr'],
+  'game-resident-evil-4-remake': ['resident evil', 're4', 're4 remake'],
+  'game-cyberpunk-2077': ['cyberpunk', 'cp2077'],
+  'game-elden-ring': ['elden', 'er'],
+  'game-hell-is-us': ['hell is us', 'hiu'],
+};
+const normalizeGameSearch = (value: string): string => value.toLocaleLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/gu, '').trim();
+
+function GameCombobox({ games, value, onChange }: {
+  readonly games: readonly PlanariaGame[];
+  readonly value: string;
+  readonly onChange: (game: PlanariaGame) => void;
+}) {
+  const { t } = useI18n();
+  const listId = useId();
+  const selected = games.find((game) => game.id === value);
+  const [query, setQuery] = useState(selected?.displayName ?? '');
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const matches = useMemo(() => {
+    const needle = normalizeGameSearch(query);
+    const enabled = games.filter((game) => game.enabled);
+    if (!needle) return enabled;
+    return enabled.filter((game) => [game.displayName, game.id, ...(gameAliases[game.id] ?? [])]
+      .some((candidate) => normalizeGameSearch(candidate).includes(needle)));
+  }, [games, query]);
+  const choose = (game: PlanariaGame) => {
+    onChange(game); setQuery(game.displayName); setOpen(false); setActiveIndex(0);
+  };
+  return (
+    <div className="planaria-game-combobox" onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        setOpen(false); setQuery(selected?.displayName ?? '');
+      }
+    }}>
+      <label htmlFor={`${listId}-input`}>{t('planaria.gameName')}</label>
+      <input
+        aria-autocomplete="list"
+        aria-controls={listId}
+        aria-expanded={open}
+        autoComplete="off"
+        id={`${listId}-input`}
+        onChange={(event) => { setQuery(event.target.value); setOpen(true); setActiveIndex(0); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') { setOpen(false); return; }
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault(); setOpen(true);
+            setActiveIndex((current) => Math.max(0, Math.min(matches.length - 1, current + (event.key === 'ArrowDown' ? 1 : -1))));
+          }
+          if (event.key === 'Enter' && open && matches[activeIndex]) { event.preventDefault(); choose(matches[activeIndex]); }
+        }}
+        placeholder={t('planaria.gameSearchPlaceholder')}
+        role="combobox"
+        value={query}
+      />
+      {open ? <div className="planaria-game-options" id={listId} role="listbox">
+        {matches.map((game, index) => <button
+          aria-selected={game.id === value}
+          className={index === activeIndex ? 'is-active' : ''}
+          key={game.id}
+          onMouseDown={(event) => event.preventDefault()}
+          onMouseEnter={() => setActiveIndex(index)}
+          onClick={() => choose(game)}
+          role="option"
+          type="button"
+        ><strong>{game.displayName}</strong><small>{game.edition}</small></button>)}
+        {matches.length === 0 ? <p>{t('planaria.gameSearchEmpty')}</p> : null}
+      </div> : null}
+    </div>
+  );
+}
 
 interface SharedProps {
   readonly snapshot: PlanariaDashboardSnapshot;
@@ -128,6 +206,7 @@ function ModUpload({ snapshot, progress, refresh }: SharedProps) {
   const [name, setName] = useState('');
   const [summary, setSummary] = useState('');
   const [targetPath, setTargetPath] = useState('');
+  const [targetInputMode, setTargetInputMode] = useState<'browse' | 'manual'>('browse');
   const [installationMode, setInstallationMode] = useState<'replace' | 'add-on'>('replace');
   const [gameId, setGameId] = useState(snapshot.games[0]?.id ?? '');
   const [edition, setEdition] = useState(snapshot.games[0]?.edition ?? 'standard');
@@ -170,6 +249,13 @@ function ModUpload({ snapshot, progress, refresh }: SharedProps) {
         else setImageFile(selected);
       }
     } catch { setError(t('planaria.requestFailed')); }
+  };
+  const chooseTargetPath = async () => {
+    setTargetInputMode('browse'); setError('');
+    try {
+      const selectedTarget = await window.lyorPlanaria.selectTargetPath();
+      if (selectedTarget) setTargetPath(selectedTarget.relativePath);
+    } catch { setError(t('planaria.targetPathBrowseError')); }
   };
   const save = () => run(async () => {
     if (!parsedManifest) throw new Error('invalid');
@@ -217,9 +303,9 @@ function ModUpload({ snapshot, progress, refresh }: SharedProps) {
       </section>
       <div className="planaria-form-grid planaria-form-grid--primary">
         <label>{t('planaria.modName')}<input maxLength={160} onChange={(event) => { const next = event.target.value; setName(next); if (!modId) setModId(next.toLowerCase().trim().replace(/[^a-z0-9]+/gu, '-').replace(/^-|-$/gu, '').slice(0, 120)); }} value={name} /></label>
-        <label>{t('planaria.gameName')}<select onChange={(event) => { setGameId(event.target.value); const game = snapshot.games.find((item) => item.id === event.target.value); if (game) setEdition(game.edition); }} value={gameId}>{snapshot.games.map((game) => <option key={game.id} value={game.id}>{game.displayName}</option>)}</select></label>
+        <GameCombobox games={snapshot.games} onChange={(game) => { setGameId(game.id); setEdition(game.edition); }} value={gameId} />
         <label className="planaria-field-wide">{t('planaria.summary')}<textarea maxLength={2000} onChange={(event) => setSummary(event.target.value)} value={summary} /></label>
-        <label className="planaria-field-wide">{t('planaria.targetPath')}<input autoComplete="off" maxLength={1024} onChange={(event) => setTargetPath(event.target.value)} placeholder={t('planaria.targetPathPlaceholder')} value={targetPath} /><small className={targetPath && !targetPathValid ? 'planaria-error' : ''}>{targetPath && !targetPathValid ? t('planaria.targetPathInvalid') : t('planaria.targetPathHint')}</small></label>
+        <fieldset className="planaria-target-path planaria-field-wide"><legend>{t('planaria.targetPath')}</legend><div className="planaria-target-path__modes"><button aria-pressed={targetInputMode === 'browse'} onClick={() => void chooseTargetPath()} type="button">{t('planaria.targetPathBrowse')}</button><button aria-pressed={targetInputMode === 'manual'} onClick={() => setTargetInputMode('manual')} type="button">{t('planaria.targetPathManual')}</button></div>{targetInputMode === 'manual' ? <input aria-label={t('planaria.targetPathManualInput')} autoComplete="off" maxLength={1024} onChange={(event) => setTargetPath(event.target.value)} placeholder={t('planaria.targetPathPlaceholder')} value={targetPath} /> : <input aria-label={t('planaria.targetPathSelected')} placeholder={t('planaria.targetPathBrowsePlaceholder')} readOnly value={targetPath} />}<small className={targetPath && !targetPathValid ? 'planaria-error' : ''}>{targetPath && !targetPathValid ? t('planaria.targetPathInvalid') : targetInputMode === 'browse' ? t('planaria.targetPathBrowseHint') : t('planaria.targetPathHint')}</small></fieldset>
         <fieldset className="planaria-install-mode planaria-field-wide"><legend>{t('planaria.installMode')}</legend><div><button aria-pressed={installationMode === 'replace'} onClick={() => setInstallationMode('replace')} type="button"><strong>Replace</strong><small>{t('planaria.replaceHint')}</small></button><button aria-pressed={installationMode === 'add-on'} onClick={() => setInstallationMode('add-on')} type="button"><strong>Add-on</strong><small>{t('planaria.addOnHint')}</small></button></div></fieldset>
       </div>
       <details className="planaria-advanced-fields"><summary>{t('planaria.advancedSettings')}</summary><div className="planaria-form-grid">

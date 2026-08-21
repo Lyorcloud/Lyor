@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, promises as fs } from 'node:fs';
-import { basename, dirname, extname } from 'node:path';
+import { basename, dirname, extname, isAbsolute, relative } from 'node:path';
 
 import { BrowserWindow, dialog } from 'electron';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -17,6 +17,7 @@ import type {
   PlanariaSaveDraftInput,
   PlanariaSaveDraftResult,
   PlanariaTransitionInput,
+  PlanariaTargetPathSelection,
   PlanariaUploadProgress,
   PublicBillboardItem,
 } from '../shared/planaria';
@@ -129,6 +130,32 @@ export class PlanariaService {
       id: selection.id, purpose: selection.purpose, name: selection.name,
       mimeType: selection.mimeType, size: selection.size, sha256: selection.sha256,
     };
+  }
+
+  async selectTargetPath(window: BrowserWindow): Promise<PlanariaTargetPathSelection | null> {
+    const rootResponse = await dialog.showOpenDialog(window, {
+      title: 'Select the game root folder',
+      buttonLabel: 'Select game root',
+      properties: ['openDirectory'],
+    });
+    const selectedRoot = rootResponse.filePaths[0];
+    if (rootResponse.canceled || !selectedRoot) return null;
+
+    const targetResponse = await dialog.showOpenDialog(window, {
+      title: 'Select the destination inside the game',
+      buttonLabel: 'Select destination',
+      defaultPath: selectedRoot,
+      properties: ['openDirectory'],
+    });
+    const selectedTarget = targetResponse.filePaths[0];
+    if (targetResponse.canceled || !selectedTarget) return null;
+
+    const [rootPath, targetPath] = await Promise.all([fs.realpath(selectedRoot), fs.realpath(selectedTarget)]);
+    const relativePath = relative(rootPath, targetPath).replaceAll('\\', '/') || '.';
+    if (isAbsolute(relativePath) || relativePath === '..' || relativePath.startsWith('../')) {
+      throw new Error('The destination must be inside the selected game root.');
+    }
+    return { relativePath };
   }
 
   async saveDraft(input: PlanariaSaveDraftInput): Promise<PlanariaSaveDraftResult> {

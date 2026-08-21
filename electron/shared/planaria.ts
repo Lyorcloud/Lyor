@@ -2,6 +2,7 @@ export const PLANARIA_CHANNELS = {
   getDashboard: 'planaria:get-dashboard',
   getPublicBillboards: 'planaria:get-public-billboards',
   selectFile: 'planaria:select-file',
+  selectTargetPath: 'planaria:select-target-path',
   saveDraft: 'planaria:save-draft',
   uploadPackage: 'planaria:upload-package',
   uploadModMedia: 'planaria:upload-mod-media',
@@ -72,6 +73,7 @@ export interface PlanariaFileSelection {
   readonly id: string; readonly purpose: PlanariaFilePurpose; readonly name: string;
   readonly mimeType: string; readonly size: number; readonly sha256: string;
 }
+export interface PlanariaTargetPathSelection { readonly relativePath: string }
 export interface PlanariaSaveDraftInput {
   readonly modId: string; readonly name: string; readonly summary: string; readonly gameId: string;
   readonly versionId: string | null; readonly version: string; readonly gameEdition: string;
@@ -105,6 +107,7 @@ export interface LyorPlanariaApi {
   readonly getDashboard: () => Promise<PlanariaDashboardSnapshot>;
   readonly getPublicBillboards: () => Promise<readonly PublicBillboardItem[]>;
   readonly selectFile: (purpose: PlanariaFilePurpose) => Promise<PlanariaFileSelection | null>;
+  readonly selectTargetPath: () => Promise<PlanariaTargetPathSelection | null>;
   readonly saveDraft: (input: PlanariaSaveDraftInput) => Promise<PlanariaSaveDraftResult>;
   readonly uploadPackage: (input: PlanariaPackageUploadInput) => Promise<void>;
   readonly uploadModMedia: (input: PlanariaModMediaUploadInput) => Promise<void>;

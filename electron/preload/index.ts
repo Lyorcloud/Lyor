@@ -41,6 +41,7 @@ import type {
   PlanariaPackageUploadInput,
   PlanariaSaveDraftInput,
   PlanariaSaveDraftResult,
+  PlanariaTargetPathSelection,
   PlanariaTransitionInput,
   PlanariaUploadProgress,
   PublicBillboardItem,
@@ -109,7 +110,7 @@ const PRELOAD_INSTALLATION_ENGINE_CHANNELS = {
 } as const;
 const PRELOAD_PLANARIA_CHANNELS = {
   getDashboard: 'planaria:get-dashboard', getPublicBillboards: 'planaria:get-public-billboards',
-  selectFile: 'planaria:select-file', saveDraft: 'planaria:save-draft',
+    selectFile: 'planaria:select-file', selectTargetPath: 'planaria:select-target-path', saveDraft: 'planaria:save-draft',
   uploadPackage: 'planaria:upload-package', uploadModMedia: 'planaria:upload-mod-media',
   uploadBillboard: 'planaria:upload-billboard', transitionVersion: 'planaria:transition-version',
   mutateBillboard: 'planaria:mutate-billboard', createAdmin: 'planaria:create-admin',
@@ -311,6 +312,11 @@ const isPlanariaFileSelection = (value: unknown): value is PlanariaFileSelection
   typeof value.name === 'string' && typeof value.mimeType === 'string' &&
   isNonNegativeFiniteNumber(value.size) && typeof value.sha256 === 'string' && /^[a-f0-9]{64}$/u.test(value.sha256) &&
   hasNoPrivilegedFields(value);
+const isPlanariaTargetPathSelection = (value: unknown): value is PlanariaTargetPathSelection =>
+  isRecord(value) && Object.keys(value).length === 1 && typeof value.relativePath === 'string' &&
+  value.relativePath.length > 0 && value.relativePath.length <= 1024 &&
+  !value.relativePath.startsWith('/') && !/^[a-z]:/iu.test(value.relativePath) &&
+  !value.relativePath.split('/').includes('..') && !value.relativePath.includes('\0');
 const isPlanariaSaveDraftResult = (value: unknown): value is PlanariaSaveDraftResult =>
   isRecord(value) && typeof value.versionId === 'string' && typeof value.modUpdatedAt === 'string' &&
   typeof value.versionUpdatedAt === 'string';
@@ -491,6 +497,12 @@ const lyorPlanaria: Readonly<LyorPlanariaApi> = Object.freeze({
     const result: unknown = await ipcRenderer.invoke(PRELOAD_PLANARIA_CHANNELS.selectFile, purpose);
     if (result === null) return null;
     if (!isPlanariaFileSelection(result)) throw new TypeError('Invalid selected-file response.');
+    return result;
+  },
+  selectTargetPath: async () => {
+    const result: unknown = await ipcRenderer.invoke(PRELOAD_PLANARIA_CHANNELS.selectTargetPath);
+    if (result === null) return null;
+    if (!isPlanariaTargetPathSelection(result)) throw new TypeError('Invalid target-path response.');
     return result;
   },
   saveDraft: async (input: PlanariaSaveDraftInput) => {

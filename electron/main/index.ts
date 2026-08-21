@@ -102,7 +102,7 @@ const ALLOWED_INSTALLATION_ENGINE_CHANNELS: ReadonlySet<string> = new Set(
 );
 const ALLOWED_PLANARIA_CHANNELS: ReadonlySet<string> = new Set([
   PLANARIA_CHANNELS.getDashboard, PLANARIA_CHANNELS.getPublicBillboards,
-  PLANARIA_CHANNELS.selectFile, PLANARIA_CHANNELS.saveDraft,
+  PLANARIA_CHANNELS.selectFile, PLANARIA_CHANNELS.selectTargetPath, PLANARIA_CHANNELS.saveDraft,
   PLANARIA_CHANNELS.uploadPackage, PLANARIA_CHANNELS.uploadModMedia,
   PLANARIA_CHANNELS.uploadBillboard, PLANARIA_CHANNELS.transitionVersion,
   PLANARIA_CHANNELS.mutateBillboard, PLANARIA_CHANNELS.createAdmin,
@@ -614,6 +614,7 @@ const registerPlanariaHandlers = (
     if (!isPlanariaFilePurpose(purpose)) throw new TypeError('Rejected Planaria file purpose.');
     return service.selectFile(window, purpose);
   });
+  registerHandler(PLANARIA_CHANNELS.selectTargetPath, 0, () => service.selectTargetPath(window));
   registerHandler(PLANARIA_CHANNELS.saveDraft, 1, (input) => {
     if (!isPlanariaSaveDraftInput(input)) throw new TypeError('Rejected Planaria draft.');
     return service.saveDraft(input);

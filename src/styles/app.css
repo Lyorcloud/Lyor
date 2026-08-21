@@ -2296,6 +2296,31 @@ input:focus-visible,
 .planaria-panel textarea { min-height: 86px; resize: vertical; }
 .planaria-field-wide { grid-column: 1 / -1; }
 .planaria-form-grid--primary { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+.planaria-game-combobox { position: relative; display: grid; align-content: start; gap: 6px; min-width: 0; color: var(--theme-secondary-text); font-size: 12px; }
+.planaria-game-options {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 5px);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--theme-strong-border);
+  border-radius: 10px;
+  background: var(--theme-input-surface);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .28);
+  padding: 5px;
+}
+.planaria-game-options button { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 10px; border-color: transparent; background: transparent; text-align: left; }
+.planaria-game-options button.is-active { border-color: var(--theme-border); background: var(--theme-selected-surface); }
+.planaria-game-options button small { color: var(--theme-secondary-text); text-transform: capitalize; }
+.planaria-game-options p { padding: 10px; color: var(--theme-secondary-text); }
+.planaria-target-path { display: grid; min-width: 0; gap: 8px; margin: 0; border: 0; padding: 0; }
+.planaria-target-path legend { margin-bottom: 6px; color: var(--theme-secondary-text); font-size: 12px; }
+.planaria-target-path__modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.planaria-target-path__modes button[aria-pressed='true'] { border-color: var(--theme-strong-border); background: var(--theme-selected-surface); box-shadow: 0 0 0 3px rgba(94, 140, 255, .12); }
+.planaria-target-path small { color: var(--theme-secondary-text); }
 .planaria-mod-hero-upload { display: grid; gap: 10px; }
 .planaria-mod-hero-upload > button:first-child {
   display: grid;
