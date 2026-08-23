@@ -16,7 +16,6 @@ import { Toggle } from './Toggle';
 const themeTranslationKeys = {
   'ice-max': ['theme.iceMax', 'theme.iceMaxDescription'],
   dark: ['theme.dark', 'theme.darkDescription'],
-  light: ['theme.light', 'theme.lightDescription'],
 } as const;
 
 function formatBytes(value: number): string {

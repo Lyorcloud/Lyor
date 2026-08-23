@@ -110,7 +110,13 @@ export function ProductSwitcher({
         ref={triggerRef}
         type="button"
       >
-        <span>{currentLabel}</span>
+        <img
+          alt=""
+          aria-hidden="true"
+          className="product-switcher__logo"
+          src="./assets/lyor/app-logo.png"
+        />
+        <span className="product-switcher__label">{currentLabel}</span>
         <span className="product-switcher__arrow"><SidebarArrow direction="down" /></span>
       </button>
       <div

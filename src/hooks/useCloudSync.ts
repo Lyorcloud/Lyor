@@ -32,7 +32,8 @@ export function useCloudSync(authStatus: AuthStatus): CloudSyncState {
     const settings = state.account?.settings;
     if (!settings) return;
     applyRemotePreferences(settings, () => {
-      if (settings.theme !== theme) setTheme(settings.theme);
+      const remoteTheme = settings.theme === 'light' ? 'ice-max' : settings.theme;
+      if (remoteTheme !== theme) setTheme(remoteTheme);
       if (settings.locale !== locale) setLocale(settings.locale);
       if (settings.accountPreferences.autoDetectGames !== autoDetectGames) {
         setAutoDetectGames(settings.accountPreferences.autoDetectGames);

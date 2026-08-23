@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { LyorPlanariaApi, PlanariaDashboardSnapshot } from '../electron/shared/planaria';
@@ -64,7 +64,7 @@ describe('Planaria dashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mod Upload' }));
     const gameSearch = screen.getByRole('combobox', { name: 'Game' });
     fireEvent.change(gameSearch, { target: { value: 'red dead' } });
-    fireEvent.click(screen.getByRole('option', { name: /Red Dead Redemption 2/u }));
+    fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: /Red Dead Redemption 2/u }));
     expect(gameSearch).toHaveValue('Red Dead Redemption 2');
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose with File Explorer' }));

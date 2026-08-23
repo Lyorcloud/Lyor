@@ -8,9 +8,10 @@ interface ModGridProps {
   readonly mods: readonly Mod[];
   readonly phases: ReadonlyMap<ModId, MockInstallPhase>;
   readonly state: MockModState;
+  readonly requireAuthentication: (action: () => void | Promise<void>) => void;
 }
 
-export function ModGrid({ emptyMessage, mode = 'catalog', mods, phases, state }: ModGridProps) {
+export function ModGrid({ emptyMessage, mode = 'catalog', mods, phases, requireAuthentication, state }: ModGridProps) {
   if (mods.length === 0) {
     return <p className="empty-state">{emptyMessage}</p>;
   }
@@ -26,6 +27,7 @@ export function ModGrid({ emptyMessage, mode = 'catalog', mods, phases, state }:
           mod={mod}
           libraryState={state.localInstallationState[mod.id]}
           mode={mode}
+          requireAuthentication={requireAuthentication}
         />
       ))}
     </div>

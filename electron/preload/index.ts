@@ -87,6 +87,7 @@ const PRELOAD_AUTH_CHANNELS = {
   forgotPassword: 'auth:forgot-password',
   updatePassword: 'auth:update-password',
   refreshSession: 'auth:refresh-session',
+  setRememberMe: 'auth:set-remember-me',
   logout: 'auth:logout',
   stateChanged: 'auth:state-changed',
 } as const;
@@ -118,6 +119,7 @@ const PRELOAD_PLANARIA_CHANNELS = {
 } as const;
 
 const AUTH_STATUSES: ReadonlySet<string> = new Set<AuthStatus>([
+  'loading',
   'configurationRequired',
   'anonymous',
   'authenticated',
@@ -230,7 +232,7 @@ const isAuthState = (value: unknown): value is AuthState => {
   );
   return typeof candidate.status === 'string' && AUTH_STATUSES.has(candidate.status) &&
     validUser && isNullableString(candidate.expiresAt) &&
-    typeof candidate.passwordRecoveryPending === 'boolean';
+    typeof candidate.passwordRecoveryPending === 'boolean' && typeof candidate.rememberMe === 'boolean';
 };
 
 const isAuthResult = (value: unknown): value is AuthResult => {
@@ -417,6 +419,7 @@ const lyorAuth: Readonly<LyorAuthApi> = Object.freeze({
   forgotPassword: (input: ForgotPasswordInput) => invokeAuthResult(PRELOAD_AUTH_CHANNELS.forgotPassword, input),
   updatePassword: (input: UpdatePasswordInput) => invokeAuthResult(PRELOAD_AUTH_CHANNELS.updatePassword, input),
   refreshSession: () => invokeAuthResult(PRELOAD_AUTH_CHANNELS.refreshSession),
+  setRememberMe: (enabled: boolean) => invokeAuthResult(PRELOAD_AUTH_CHANNELS.setRememberMe, enabled),
   logout: () => invokeAuthResult(PRELOAD_AUTH_CHANNELS.logout),
   onStateChange: (listener: (state: AuthState) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, value: unknown): void => {

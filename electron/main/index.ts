@@ -83,6 +83,7 @@ const ALLOWED_AUTH_INVOKE_CHANNELS: ReadonlySet<string> = new Set([
   AUTH_CHANNELS.forgotPassword,
   AUTH_CHANNELS.updatePassword,
   AUTH_CHANNELS.refreshSession,
+  AUTH_CHANNELS.setRememberMe,
   AUTH_CHANNELS.logout,
 ]);
 const ALLOWED_PLANARIA_AUTH_CHANNELS: ReadonlySet<string> = new Set([
@@ -484,6 +485,10 @@ const registerAuthHandlers = (
     return service.updatePassword(input);
   });
   registerHandler(AUTH_CHANNELS.refreshSession, 0, () => service.refreshSession());
+  registerHandler(AUTH_CHANNELS.setRememberMe, 1, (enabled) => {
+    if (typeof enabled !== 'boolean') throw new TypeError('Rejected Remember Me preference.');
+    return service.setRememberMe(enabled);
+  });
   registerHandler(AUTH_CHANNELS.logout, 0, () => service.logout());
 };
 

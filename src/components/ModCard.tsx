@@ -12,6 +12,7 @@ interface ModCardProps {
   readonly libraryState?: LibraryCardState;
   readonly mod: Mod;
   readonly mode?: 'catalog' | 'library';
+  readonly requireAuthentication: (action: () => void | Promise<void>) => void;
 }
 
 const stateKeys: Record<LibraryCardState, Parameters<ReturnType<typeof useI18n>['t']>[0]> = {
@@ -22,7 +23,7 @@ const stateKeys: Record<LibraryCardState, Parameters<ReturnType<typeof useI18n>[
   'compatibility-unknown': 'library.state.compatibilityUnknown',
 };
 
-export function ModCard({ favorite, installPhase, installed, libraryState, mod, mode = 'catalog' }: ModCardProps) {
+export function ModCard({ favorite, installPhase, installed, libraryState, mod, mode = 'catalog', requireAuthentication }: ModCardProps) {
   const { t } = useI18n();
   const [uninstalling, setUninstalling] = useState(false);
   const [exiting, setExiting] = useState(false);
@@ -69,9 +70,9 @@ export function ModCard({ favorite, installPhase, installed, libraryState, mod, 
       {isLibrary && libraryState ? <p className={`mod-card__library-state mod-card__library-state--${libraryState}`}>{t(stateKeys[libraryState])}</p> : null}
       <p className="mod-card__description">{mod.description}</p>
       <div aria-hidden="true" className="mod-card__share"><img alt="" src="./assets/figma/card-icon-01.svg" /></div>
-      <FavoriteButton active={favorite} className="mod-card__favorite" label={t(favorite ? 'action.removeFavorite' : 'action.addFavorite')} onClick={() => toggleMockFavorite(mod.id)} />
-      {isLibrary ? <button aria-label={t('action.removeFromLibrary')} className="mod-card__remove" disabled={exiting} onClick={handleRemove} title={t('action.removeFromLibrary')} type="button">×</button> : null}
-      <button className={`mod-card__action mod-card__action--${installPhase}`} disabled={workflowBusy || uninstalling || installPhase === 'success'} onClick={() => void handleInstallAction()} type="button">
+      <FavoriteButton active={favorite} className="mod-card__favorite" label={t(favorite ? 'action.removeFavorite' : 'action.addFavorite')} onClick={() => requireAuthentication(() => { toggleMockFavorite(mod.id); })} />
+      {isLibrary ? <button aria-label={t('action.removeFromLibrary')} className="mod-card__remove" disabled={exiting} onClick={() => requireAuthentication(handleRemove)} title={t('action.removeFromLibrary')} type="button">×</button> : null}
+      <button className={`mod-card__action mod-card__action--${installPhase}`} disabled={workflowBusy || uninstalling || installPhase === 'success'} onClick={() => requireAuthentication(handleInstallAction)} type="button">
         {installPhase === 'success' ? <span aria-hidden="true" className="success-check"><span /></span> : null}{actionLabel}
       </button>
     </article>

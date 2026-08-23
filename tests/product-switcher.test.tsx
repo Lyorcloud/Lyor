@@ -9,6 +9,15 @@ const destinations = [
 ] as const;
 
 describe('ProductSwitcher', () => {
+  it('renders the compact logo, label, and arrow unit for the longer product name', () => {
+    render(<ProductSwitcher currentLabel="Planaria" currentProductId="planaria" destinations={destinations} label="Switch product" onSelect={vi.fn()} unavailableLabel="Coming soon" />);
+
+    const trigger = screen.getByRole('button', { name: 'Switch product' });
+    expect(trigger.querySelector('.product-switcher__logo')).toHaveAttribute('src', './assets/lyor/app-logo.png');
+    expect(trigger.querySelector('.product-switcher__label')).toHaveTextContent('Planaria');
+    expect(trigger.querySelector('.product-switcher__arrow .sidebar-arrow--down')).toBeInTheDocument();
+  });
+
   it('exposes the Planaria placeholder and closes with Escape/outside click', () => {
     const onSelect = vi.fn();
     render(<><ProductSwitcher currentLabel="Lyor" destinations={destinations} label="Switch product" onSelect={onSelect} unavailableLabel="Coming soon" /><button type="button">Outside</button></>);

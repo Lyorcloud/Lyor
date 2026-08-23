@@ -6,7 +6,7 @@ import type { AuthResult, AuthState } from '../electron/shared/auth';
 
 vi.mock('../src/i18n/I18nContext', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 
-const anonymous: AuthState = { status: 'anonymous', user: null, expiresAt: null, passwordRecoveryPending: false };
+const anonymous: AuthState = { status: 'anonymous', user: null, expiresAt: null, passwordRecoveryPending: false, rememberMe: true };
 const result: AuthResult = { state: anonymous, error: null, notice: null };
 
 const renderPanel = (state = anonymous, overrides: Partial<React.ComponentProps<typeof AuthPanel>> = {}) => {
@@ -14,6 +14,7 @@ const renderPanel = (state = anonymous, overrides: Partial<React.ComponentProps<
     forgotPassword: vi.fn().mockResolvedValue(result),
     login: vi.fn().mockResolvedValue(result),
     logout: vi.fn().mockResolvedValue(result),
+    setRememberMe: vi.fn().mockResolvedValue(result),
     onClose: vi.fn(),
     open: true,
     pending: false,
@@ -45,10 +46,21 @@ describe('AuthPanel', () => {
     fireEvent.change(screen.getByLabelText('auth.password'), { target: { value: 'StrongPass1' } });
     fireEvent.click(screen.getByRole('button', { name: 'auth.login.submit' }));
     await waitFor(() => expect(props.login).toHaveBeenCalledWith({ email: 'player@example.com', password: 'StrongPass1' }));
+    expect(props.setRememberMe).toHaveBeenCalledWith(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'auth.forgot.link' }));
     fireEvent.click(screen.getByRole('button', { name: 'auth.forgot.submit' }));
     await waitFor(() => expect(props.forgotPassword).toHaveBeenCalledWith({ email: 'player@example.com' }));
+  });
+
+  it('defaults Remember Me on and persists changes for an authenticated session', async () => {
+    const authenticated = { ...anonymous, status: 'authenticated' as const, user: { id: '1', email: 'p@e.test', emailVerified: true, role: 'user' as const } };
+    const props = renderPanel(authenticated);
+    const checkbox = screen.getByRole('checkbox', { name: 'auth.rememberMe' });
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    await waitFor(() => expect(props.setRememberMe).toHaveBeenCalledWith(false));
+    expect(props.logout).not.toHaveBeenCalled();
   });
 
   it('shows password recovery and submits a new password', async () => {

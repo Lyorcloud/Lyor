@@ -10,14 +10,15 @@ import type {
 } from '../../electron/shared/auth';
 
 const unavailableState: AuthState = {
-  status: 'configurationRequired',
+  status: 'loading',
   user: null,
   expiresAt: null,
   passwordRecoveryPending: false,
+  rememberMe: true,
 };
 
 const unavailableResult: AuthResult = {
-  state: unavailableState,
+  state: { ...unavailableState, status: 'configurationRequired' },
   error: {
     code: 'configurationUnavailable',
     message: 'Authentication is not configured in this build.',
@@ -29,7 +30,9 @@ const getBridge = () =>
   (window as Window & { lyorAuth?: Window['lyorAuth'] }).lyorAuth;
 
 export function useAuth() {
-  const [state, setState] = useState<AuthState>(unavailableState);
+  const [state, setState] = useState<AuthState>(() => getBridge()
+    ? unavailableState
+    : { ...unavailableState, status: 'configurationRequired' });
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
@@ -69,6 +72,7 @@ export function useAuth() {
     forgotPassword: (input: ForgotPasswordInput) => run(() => getBridge()?.forgotPassword(input) ?? Promise.resolve(unavailableResult)),
     updatePassword: (input: UpdatePasswordInput) => run(() => getBridge()?.updatePassword(input) ?? Promise.resolve(unavailableResult)),
     refreshSession: () => run(() => getBridge()?.refreshSession() ?? Promise.resolve(unavailableResult)),
+    setRememberMe: (enabled: boolean) => run(() => getBridge()?.setRememberMe(enabled) ?? Promise.resolve(unavailableResult)),
     logout: () => run(() => getBridge()?.logout() ?? Promise.resolve(unavailableResult)),
   };
 }

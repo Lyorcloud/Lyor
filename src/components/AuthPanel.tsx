@@ -29,6 +29,7 @@ interface AuthActions {
   readonly forgotPassword: (input: { email: string }) => Promise<AuthResult>;
   readonly login: (input: { email: string; password: string }) => Promise<AuthResult>;
   readonly logout: () => Promise<AuthResult>;
+  readonly setRememberMe: (enabled: boolean) => Promise<AuthResult>;
   readonly register: (input: { email: string; password: string; passwordConfirm: string }) => Promise<AuthResult>;
   readonly updatePassword: (input: { password: string; passwordConfirm: string }) => Promise<AuthResult>;
 }
@@ -38,17 +39,20 @@ interface AuthPanelProps extends AuthActions {
   readonly open: boolean;
   readonly pending: boolean;
   readonly state: AuthState;
+  readonly onAuthenticated?: () => void;
 }
 
 export function AuthPanel({
   forgotPassword,
   login,
   logout,
+  setRememberMe,
   onClose,
   open,
   pending,
   register,
   state,
+  onAuthenticated,
   updatePassword,
 }: AuthPanelProps) {
   const { t } = useI18n();
@@ -57,6 +61,7 @@ export function AuthPanel({
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [rememberMe, setRememberMeState] = useState(state.rememberMe);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -89,7 +94,7 @@ export function AuthPanel({
 
   const activeView: AuthView = state.passwordRecoveryPending ? 'reset' : view;
 
-  const complete = async (request: Promise<AuthResult>) => {
+  const complete = async (request: Promise<AuthResult>, notifyAuthenticated = true) => {
     const result = await request;
     if (result.error) {
       setFeedback(t(errorKeys[result.error.code]));
@@ -101,13 +106,21 @@ export function AuthPanel({
     if (result.state.status === 'authenticated' && !result.state.passwordRecoveryPending) {
       setPassword('');
       setPasswordConfirm('');
+      if (notifyAuthenticated) onAuthenticated?.();
     }
   };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setFeedback('');
-    if (activeView === 'login') void complete(login({ email, password }));
+    if (activeView === 'login') void (async () => {
+      const preference = await setRememberMe(rememberMe);
+      if (preference.error) {
+        setFeedback(t(errorKeys[preference.error.code]));
+        return;
+      }
+      await complete(login({ email, password }));
+    })();
     if (activeView === 'register') void complete(register({ email, password, passwordConfirm }));
     if (activeView === 'forgot') void complete(forgotPassword({ email }));
     if (activeView === 'reset') void complete(updatePassword({ password, passwordConfirm }));
@@ -131,6 +144,11 @@ export function AuthPanel({
           <div className="auth-account">
             <p>{state.user?.email}</p>
             <span>{t('auth.verified')}</span>
+            <label className="auth-form__remember"><input checked={rememberMe} onChange={(event) => {
+              const enabled = event.target.checked;
+              setRememberMeState(enabled);
+              void complete(setRememberMe(enabled), false);
+            }} type="checkbox" />{t('auth.rememberMe')}</label>
             <button disabled={pending} onClick={() => void complete(logout())} type="button">{t('auth.logout')}</button>
           </div>
         ) : (
@@ -144,6 +162,7 @@ export function AuthPanel({
             {activeView === 'register' || activeView === 'reset' ? (
               <label>{t('auth.confirmPassword')}<input autoComplete="new-password" maxLength={128} minLength={8} onChange={(event) => setPasswordConfirm(event.target.value)} required type="password" value={passwordConfirm} /></label>
             ) : null}
+            {activeView === 'login' ? <label className="auth-form__remember"><input checked={rememberMe} onChange={(event) => setRememberMeState(event.target.checked)} type="checkbox" />{t('auth.rememberMe')}</label> : null}
             {feedback ? <p aria-live="polite" className="auth-form__feedback">{feedback}</p> : null}
             <button className="auth-form__primary" disabled={pending} type="submit">{pending ? t('auth.working') : t(submitKeys[activeView])}</button>
             {activeView === 'login' ? (

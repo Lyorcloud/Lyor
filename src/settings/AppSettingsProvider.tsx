@@ -61,7 +61,7 @@ function getInitialSettings(): PersistedAppSettings {
 
   if (typeof document !== 'undefined') {
     document.documentElement.dataset.theme = settings.theme;
-    document.documentElement.style.colorScheme = settings.theme === 'light' ? 'light' : 'dark';
+    document.documentElement.style.colorScheme = 'dark';
   }
 
   return settings;
@@ -72,7 +72,7 @@ export function AppSettingsProvider({ children }: PropsWithChildren): ReactEleme
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
-    document.documentElement.style.colorScheme = settings.theme === 'light' ? 'light' : 'dark';
+    document.documentElement.style.colorScheme = 'dark';
 
     try {
       window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));

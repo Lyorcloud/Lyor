@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-export const THEMES = ['ice-max', 'dark', 'light'] as const;
+export const THEMES = ['ice-max', 'dark'] as const;
 export type ThemeId = (typeof THEMES)[number];
 
 export interface AppSettingsContextValue {

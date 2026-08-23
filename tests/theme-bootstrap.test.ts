@@ -10,10 +10,17 @@ describe('pre-paint theme bootstrap', () => {
 
   it('applies the persisted theme before the renderer starts', () => {
     expect(indexHtml.indexOf('theme-init.js')).toBeLessThan(indexHtml.indexOf('/src/main.tsx'));
+    localStorage.setItem('lyor.settings.v1', JSON.stringify({ version: 1, theme: 'dark' }));
+    window.eval(script);
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(document.documentElement.style.colorScheme).toBe('dark');
+  });
+
+  it('migrates the removed light theme back to Ice Max', () => {
     localStorage.setItem('lyor.settings.v1', JSON.stringify({ version: 1, theme: 'light' }));
     window.eval(script);
-    expect(document.documentElement.dataset.theme).toBe('light');
-    expect(document.documentElement.style.colorScheme).toBe('light');
+    expect(document.documentElement.dataset.theme).toBe('ice-max');
+    expect(document.documentElement.style.colorScheme).toBe('dark');
   });
 
   it('falls back safely for malformed settings', () => {

@@ -41,11 +41,12 @@ const isClientSafeKey = (key: string): boolean => {
   }
 };
 
-const anonymousState = (configured: boolean): AuthState => ({
+const anonymousState = (configured: boolean, rememberMe = true): AuthState => ({
   status: configured ? 'anonymous' : 'configurationRequired',
   user: null,
   expiresAt: null,
   passwordRecoveryPending: false,
+  rememberMe,
 });
 
 interface AuthConfiguration {
@@ -70,29 +71,34 @@ export interface AuthServiceOptions {
   readonly emitState: (state: AuthState) => void;
   readonly sessionPath?: string;
   readonly sessionStorageKey?: string;
+  readonly rememberPreferencePath?: string;
   readonly now?: () => number;
 }
 
-class SecureSessionStorage {
+export class SecureSessionStorage {
   readonly #filePath: string;
   readonly #storageKey: string;
   readonly #memory = new Map<string, string>();
+  #persistent: boolean;
 
-  constructor(filePath: string, storageKey: string) {
+  constructor(filePath: string, storageKey: string, persistent: boolean) {
     this.#filePath = filePath;
     this.#storageKey = storageKey;
+    this.#persistent = persistent;
   }
 
   async getItem(key: string): Promise<string | null> {
     if (key !== this.#storageKey) return null;
 
     try {
-      if (!safeStorage.isEncryptionAvailable()) {
+      if (!this.#persistent || !safeStorage.isEncryptionAvailable()) {
         return this.#memory.get(key) ?? null;
       }
 
       const encrypted = await fs.readFile(this.#filePath);
-      return safeStorage.decryptString(encrypted);
+      const value = safeStorage.decryptString(encrypted);
+      this.#memory.set(key, value);
+      return value;
     } catch {
       return null;
     }
@@ -101,8 +107,8 @@ class SecureSessionStorage {
   async setItem(key: string, value: string): Promise<void> {
     if (key !== this.#storageKey) return;
 
-    if (!safeStorage.isEncryptionAvailable()) {
-      this.#memory.set(key, value);
+    this.#memory.set(key, value);
+    if (!this.#persistent || !safeStorage.isEncryptionAvailable()) {
       return;
     }
 
@@ -118,6 +124,17 @@ class SecureSessionStorage {
     this.#memory.delete(key);
     await fs.rm(this.#filePath, { force: true }).catch(() => undefined);
     await fs.rm(`${this.#filePath}.tmp`, { force: true }).catch(() => undefined);
+  }
+
+  async setPersistent(persistent: boolean): Promise<void> {
+    this.#persistent = persistent;
+    if (!persistent) {
+      await fs.rm(this.#filePath, { force: true }).catch(() => undefined);
+      await fs.rm(`${this.#filePath}.tmp`, { force: true }).catch(() => undefined);
+      return;
+    }
+    const value = this.#memory.get(this.#storageKey);
+    if (value) await this.setItem(this.#storageKey, value);
   }
 }
 
@@ -152,9 +169,10 @@ const publicStateFromSession = (
   session: Session | null,
   passwordRecoveryPending = false,
   role: AppRole = 'user',
+  rememberMe = true,
 ): AuthState => {
   const user = session?.user;
-  if (!session || !user?.email) return anonymousState(true);
+  if (!session || !user?.email) return { ...anonymousState(true), rememberMe };
 
   return {
     status: 'authenticated',
@@ -170,6 +188,7 @@ const publicStateFromSession = (
       ? new Date(session.expires_at * 1_000).toISOString()
       : null,
     passwordRecoveryPending,
+    rememberMe,
   };
 };
 
@@ -213,24 +232,29 @@ export class AuthService {
   readonly #emitState: (state: AuthState) => void;
   readonly #lastRequestAt = new Map<string, number>();
   readonly #now: () => number;
+  readonly #storage: SecureSessionStorage | null;
+  readonly #rememberPreferencePath: string;
+  #rememberMe: boolean;
   #state: AuthState;
 
   constructor(options: AuthServiceOptions) {
     this.#configuration = getConfiguration();
     this.#emitState = options.emitState;
     this.#now = options.now ?? Date.now;
-    this.#state = anonymousState(Boolean(this.#configuration));
+    const sessionPath = options.sessionPath ?? join(app.getPath('userData'), 'auth', 'session.bin');
+    this.#rememberPreferencePath = options.rememberPreferencePath ?? `${sessionPath}.remember.json`;
+    this.#rememberMe = this.#readRememberPreference();
+    this.#state = { ...anonymousState(Boolean(this.#configuration)), rememberMe: this.#rememberMe };
 
     if (!this.#configuration) {
       this.#client = null;
+      this.#storage = null;
       return;
     }
 
     const sessionStorageKey = options.sessionStorageKey ?? DEFAULT_SESSION_STORAGE_KEY;
-    const storage = new SecureSessionStorage(
-      options.sessionPath ?? join(app.getPath('userData'), 'auth', 'session.bin'),
-      sessionStorageKey,
-    );
+    const storage = new SecureSessionStorage(sessionPath, sessionStorageKey, this.#rememberMe);
+    this.#storage = storage;
     this.#client = createClient(
       this.#configuration.url,
       this.#configuration.publishableKey,
@@ -263,10 +287,11 @@ export class AuthService {
 
   async restoreSession(): Promise<AuthState> {
     if (!this.#client) return this.#state;
+    if (!this.#rememberMe) await this.#storage?.setPersistent(false);
     const { data, error } = await this.#client.auth.getSession();
     if (error) {
       await this.#client.auth.signOut({ scope: 'local' });
-      this.#setState(anonymousState(true));
+      this.#setState(anonymousState(true, this.#rememberMe));
       return this.#state;
     }
     await this.#hydrateSession(data.session);
@@ -335,7 +360,7 @@ export class AuthService {
     const { data, error } = await this.#client.auth.refreshSession();
     if (error) {
       await this.#client.auth.signOut({ scope: 'local' });
-      this.#setState(anonymousState(true));
+      this.#setState(anonymousState(true, this.#rememberMe));
       return this.#result(sanitizedError(error));
     }
     await this.#hydrateSession(data.session);
@@ -345,8 +370,16 @@ export class AuthService {
   async logout(): Promise<AuthResult> {
     if (!this.#client) return this.#unavailable();
     const { error } = await this.#client.auth.signOut({ scope: 'local' });
-    this.#setState(anonymousState(true));
+    this.#setState(anonymousState(true, this.#rememberMe));
     return this.#result(error ? sanitizedError(error) : null);
+  }
+
+  async setRememberMe(enabled: boolean): Promise<AuthResult> {
+    this.#rememberMe = enabled;
+    await this.#storage?.setPersistent(enabled);
+    await this.#writeRememberPreference();
+    this.#setState({ ...this.#state, rememberMe: enabled });
+    return this.#result(null);
   }
 
   async handleDeepLink(candidate: string): Promise<boolean> {
@@ -388,7 +421,7 @@ export class AuthService {
 
   async #hydrateSession(session: Session | null, passwordRecoveryPending = false): Promise<void> {
     if (!session || !this.#client) {
-      this.#setState(publicStateFromSession(session, passwordRecoveryPending));
+      this.#setState(publicStateFromSession(session, passwordRecoveryPending, 'user', this.#rememberMe));
       return;
     }
     let role: AppRole = 'user';
@@ -400,7 +433,7 @@ export class AuthService {
       // Fail closed to the normal user role when the authorization lookup is
       // unavailable. Backend endpoints still independently authorize.
     }
-    this.#setState(publicStateFromSession(session, passwordRecoveryPending, role));
+    this.#setState(publicStateFromSession(session, passwordRecoveryPending, role, this.#rememberMe));
   }
 
   #isRateLimited(key: string): boolean {
@@ -424,6 +457,20 @@ export class AuthService {
       code: 'configurationUnavailable',
       message: 'Authentication is not configured in this build.',
     });
+  }
+
+  #readRememberPreference(): boolean {
+    try {
+      const parsed = JSON.parse(readFileSync(this.#rememberPreferencePath, 'utf8')) as Record<string, unknown>;
+      return parsed.rememberMe !== false;
+    } catch { return true; }
+  }
+
+  async #writeRememberPreference(): Promise<void> {
+    await fs.mkdir(dirname(this.#rememberPreferencePath), { recursive: true });
+    const temporary = `${this.#rememberPreferencePath}.tmp`;
+    await fs.writeFile(temporary, JSON.stringify({ rememberMe: this.#rememberMe }), { mode: 0o600 });
+    await fs.rename(temporary, this.#rememberPreferencePath);
   }
 }
 

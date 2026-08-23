@@ -21,6 +21,7 @@ import { useCloudSync } from './hooks/useCloudSync';
 import { useI18n } from './i18n/I18nContext';
 import { searchMockMods } from './services/mockModService';
 import { sortFavoriteMods, sortHomeMods, sortLibraryMods, type FavoritesSortId, type HomeSortId, type LibrarySortId } from './services/modSortService';
+import { ProtectedActionCoordinator } from './services/protectedActionService';
 
 type AppRoute = PrimaryRoute | 'favorites' | 'search' | 'settings' | 'planaria';
 
@@ -45,8 +46,8 @@ export default function App() {
   const planariaAuth = usePlanariaAuth();
   const cloudSync = useCloudSync(auth.state.status);
   const [authOpen, setAuthOpen] = useState(false);
+  const [authDismissed, setAuthDismissed] = useState(false);
   const [planariaAuthOpen, setPlanariaAuthOpen] = useState(false);
-  const closeAuth = useCallback(() => setAuthOpen(false), []);
   const [route, setRoute] = useState<AppRoute>(routeFromHash);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,6 +59,26 @@ export default function App() {
   const contentScrollRef = useRef<HTMLElement>(null);
   const routeRef = useRef<AppRoute>(route);
   const scrollPositionsRef = useRef<Map<AppRoute, number>>(new Map());
+  const protectedActionsRef = useRef(new ProtectedActionCoordinator());
+
+  const requireAuthentication = useCallback((action: () => void | Promise<void>) => {
+    protectedActionsRef.current.requireAuthentication(auth.state.status === 'authenticated', action, () => {
+      setAuthDismissed(false);
+      setAuthOpen(true);
+    });
+  }, [auth.state.status]);
+
+  const closeAuth = useCallback(() => {
+    protectedActionsRef.current.cancel();
+    setAuthDismissed(true);
+    setAuthOpen(false);
+  }, []);
+
+  const handleAuthenticated = useCallback(() => {
+    setAuthOpen(false);
+    setAuthDismissed(false);
+    protectedActionsRef.current.authenticationSucceeded();
+  }, []);
 
   const handleNavigate = (nextRoute: AppRoute) => {
     if (nextRoute !== 'search') {
@@ -159,7 +180,11 @@ export default function App() {
       ? <SortPopover label={t('sort.label')} onChange={setLibrarySort} options={librarySortOptions} value={librarySort} />
       : route === 'favorites'
         ? <SortPopover label={t('sort.label')} onChange={setFavoritesSort} options={favoriteSortOptions} value={favoritesSort} />
-        : null;
+      : null;
+
+  if (auth.state.status === 'loading') {
+    return <div aria-busy="true" className="auth-bootstrap" role="status">{t('auth.working')}</div>;
+  }
 
   return (
     <WindowShell
@@ -221,11 +246,13 @@ export default function App() {
               : t('cloud.pending', { count: cloudSync.pendingOperations })}
         </div>
       ) : null}
-      {authOpen ? (
+      {authOpen || (auth.state.status !== 'authenticated' && !authDismissed) ? (
         <AuthPanel
           forgotPassword={auth.forgotPassword}
           login={auth.login}
           logout={auth.logout}
+          setRememberMe={auth.setRememberMe}
+          onAuthenticated={handleAuthenticated}
           onClose={closeAuth}
           open
           pending={auth.pending}
@@ -260,6 +287,7 @@ export default function App() {
               mode={route === 'library' ? 'library' : 'catalog'}
               mods={visibleMods}
               phases={installPhases}
+              requireAuthentication={requireAuthentication}
               state={mockState}
             />
           ) : <SettingsPage />}

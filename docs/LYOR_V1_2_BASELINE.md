@@ -244,6 +244,15 @@ desktop publishable client cannot mutate that table. Exact `lyor://auth/callback
 deep links are accepted for PKCE/verified email flows; arbitrary URLs,
 parameters, navigation, and window creation remain denied.
 
+The Lyor account flow uses one main-process authentication source of truth.
+`Remember Me` defaults on. When on, the encrypted Supabase session is restored
+at startup while valid; when off, the current process keeps its session only in
+memory and removes the encrypted session file without signing out the running
+app. Turning it back on securely persists the current session. Explicit logout
+always clears both active and persisted session state. Renderer protected
+actions use one reusable continuation gate: a successful login resumes the one
+pending action, while dismissing login discards it.
+
 This milestone does not activate full cloud synchronization, Planaria content
 management, R2/object distribution, privileged service-role desktop access, or
 the Installation Engine. Local UI Library/install state remains distinct from

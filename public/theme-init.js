@@ -1,6 +1,6 @@
 /* global document, localStorage */
 (() => {
-  const allowedThemes = new Set(['ice-max', 'dark', 'light']);
+  const allowedThemes = new Set(['ice-max', 'dark']);
   let theme = 'ice-max';
   try {
     const stored = JSON.parse(localStorage.getItem('lyor.settings.v1') || 'null');
@@ -9,5 +9,5 @@
     // The default theme remains safe when storage is unavailable or malformed.
   }
   document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark';
+  document.documentElement.style.colorScheme = 'dark';
 })();

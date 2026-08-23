@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { AuthResult, AuthState, LoginInput } from '../../electron/shared/auth';
 
 const unavailableState: AuthState = {
-  status: 'configurationRequired', user: null, expiresAt: null, passwordRecoveryPending: false,
+  status: 'configurationRequired', user: null, expiresAt: null, passwordRecoveryPending: false, rememberMe: true,
 };
 
 export function usePlanariaAuth() {
